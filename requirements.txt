@@ -1,0 +1,10 @@
+pyts
+tsai
+openai
+colorama
+tqdm
+pydantic
+pandas
+numpy
+loguru
+google-api-python-client
