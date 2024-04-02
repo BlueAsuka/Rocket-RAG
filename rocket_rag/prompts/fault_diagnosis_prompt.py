@@ -11,7 +11,7 @@ Except for the Normal state, other states are all fault states that you should r
 Normal: The actuator operates under standard conditions without any faults. This state serves as a baseline for comparing the performance under fault conditions.
 Spalling: This state simulates the condition where the ball-screw mechanism has surface damage, affecting the actuator's smoothness and efficiency.
 Lack of Lubrication: In this state, the actuator operates with insufficient lubrication, leading to increased friction and potential for wear and tear, impacting performance and longevity.
-Backlash: Represents a state where there is a gap or looseness in the connection between the parts of the actuator, leading to inaccuracies and reduced precision in movemen
+Backlash: Represents a state where there is a gap or looseness in the connection between the parts of the actuator, leading to inaccuracies and reduced precision in movement.
 """
 
 rules = """
