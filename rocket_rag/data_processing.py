@@ -30,7 +30,7 @@ import numpy as np
 from colorama import Fore, Style
 from typing import List, Tuple
 from tqdm.auto import tqdm
-from rocket_rag.utils import *
+from utils import *
 
 RAW_DATA_DIR = '../data/raw/'
 INSTANCES_DIR = '../data/instances/'
