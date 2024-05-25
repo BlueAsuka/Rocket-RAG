@@ -21,6 +21,8 @@ from rocket_rag.node import Node
 from rocket_rag.node_indexing import NodeIndexer
 
 from pyts.transformation import ROCKET
+from sklearn.linear_model import RidgeClassifier
+from sklearn.neighbors import KNeighborsClassifier
 
 
 class BaseVectorStore():
@@ -64,6 +66,18 @@ class VectorStore(BaseVectorStore):
         """Get vector for a text ID."""
         return self.node_dict[text_id]
     
+    def get_rocket_features(self):
+        """Extract rocket features from the nodes"""
+        if len(self.nodes) == 0:
+            loguru.logger.error(f'No docs in the vector store! Please add doc.')
+        return np.array([node.get_rocket_feature() for node in self.nodes])
+    
+    def get_doc_ids(self):
+        """Extract doc ids from the nodes"""
+        if len(self.nodes) == 0:
+            loguru.logger.error(f'No docs in the vector store! Please add doc.')
+        return np.array([node.id_ for node in self.nodes])
+    
     def add(self, nodes: List[Node]) -> List[str]:
         """Add nodes to index"""
         for node in nodes:
@@ -74,20 +88,21 @@ class VectorStore(BaseVectorStore):
         del self.node_dict[node_id]
 
     def knn_query(self, 
-              query: Union[List[Any], np.ndarray],
-            #   docs: List[List[float]],
-            #   doc_ids: List[str],
-              k: int=5,
-              verbo: bool=False) -> List[Tuple[float, str]]:
+                  query: Union[List[Any], np.ndarray],
+                  k: int=1,
+                  metric: str='euclidean',
+                  verbo: bool=False) -> List[Tuple[float, str]]:
         """
         Retrievel by getting the top-k embeddings for the given query based on euclidean distance.
 
         Args:
             query: the rocket feature of the query (a time series)
-            k: the top k similiar for documents retrieveling
+            k: the top k similiar for documents retrieveling, default to 1
+            metric: the distance metric to use, default to euclidean
+            verbo: the boolean flag to show the debugging information
         
         Return:
-            A list of tuples including ids of retrieveled document and corresponding similarity scores
+            A list of tuples including ids of retrieveled document ids and corresponding distances
         """
 
         if isinstance(query, list):
@@ -95,46 +110,77 @@ class VectorStore(BaseVectorStore):
         
         if verbo:
             loguru.logger.debug(f'Looking up all docs...')
-        if len(self.nodes) == 0:
-            loguru.logger.error(f'No docs in the vector store! Please add doc.')
-            return ([], [])
-        rocket_features = np.array([node.get_rocket_feature() for node in self.nodes])
-        doc_ids = np.array([node.id_ for node in self.nodes])
+        rocket_features = self.get_rocket_features()
+        doc_ids = self.get_doc_ids()
 
-        if verbo:
-            loguru.logger.debug(f'Calculating sample similarity based on euclidean distance...')
-        euclideans = [
-            [(np.linalg.norm(rocket_features[i] - q), doc_ids[i])
-                for i in range(len(rocket_features))]
-                for q in query
-            ]
+        # ======================================
+        # Handcraft KNN classifier
+        # ======================================
+        # if verbo:
+        #     loguru.logger.debug(f'Calculating sample similarity based on euclidean distance...')
+        # euclideans = [[(np.linalg.norm(rocket_features[i] - q), doc_ids[i])
+        #                 for i in range(len(rocket_features))]
+        #                 for q in query]
+
+        # if verbo:
+        #     loguru.logger.debug(f'Sorting the euclidean distances...')
+        # topk_retrieve_res = []
+        # for e in euclideans:
+        #     e_topk = sorted(e, key=lambda x: x[0])[:k]
+        #     topk_retrieve_res.append(e_topk)
+        # topk_retrieve_res = np.array(topk_retrieve_res)
         
-        # TODO: Support for difference distance metrics such as cosine similarity
-        # cosine = []
-
-        if verbo:
-            loguru.logger.debug(f'Sorting the euclidean distances...')
-        topk_retrieve_res = []
-        for e in euclideans:
-            e_topk = sorted(e, key=lambda x: x[0])[:k]
-            topk_retrieve_res.append(e_topk)
-        topk_retrieve_res = np.array(topk_retrieve_res)
+        # if verbo:
+        #     loguru.logger.debug(f'Parsing the topk retrieving results...')
+        # similarities = [s for s, _ in topk_retrieve_res.squeeze()]
+        # result_ids = [r for _, r in topk_retrieve_res.squeeze()]
+        
+        ids_to_doc = {i: doc_ids[i] for i in range(len(doc_ids))}
         
         if verbo:
-            loguru.logger.debug(f'Parsing the topk retrieving results...')
-        similarities = [s for s, _ in topk_retrieve_res.squeeze()]
-        result_ids = [r for _, r in topk_retrieve_res.squeeze()]
+            loguru.logger.debug(f'Calculating sample similarity based on {metric} distance...')
+        knn_model = KNeighborsClassifier(n_neighbors=k, metric=metric, weights='distance')
+        knn_model.fit(rocket_features, doc_ids)
+        distances, ids = knn_model.kneighbors(query, n_neighbors=k, return_distance=True)
+        result_ids = [[ids_to_doc[i] for i in ids.tolist()[0]]]
 
-        return (similarities, result_ids)
+        return (result_ids, distances.squeeze().tolist())
     
-    def ridge_prediction(self, query, verbo=False):
+    def ridge_query(self, 
+                    query: Union[List[Any], np.ndarray],
+                    alpha: float=None,
+                    verbo=False):
         """
-        Apply ridge classifier with sklearn package for the retrieving results
-        the retrieving result is a prediction of the given qurey.
+        Apply ridge classifier for retrieving results, the retrieving result is a prediction of the given qurey.
+        Use ridge classifier can only return top-1 retrieval result.
+        
+        Args:
+            query: the rocket feature of the query (a time series)
+            alpha: the alpha parameter for ridge classifier
+            verbo: the boolean flag to show the debugging information
+            
+        Return:
+            A  tuple including id of retrieveled document and corresponding similarity scores of the ridge model
         """
-        pass
-        # TODO: Implement the ridge classifier for the prediction.
-
+        
+        if isinstance(query, list):
+            query = np.array(query)
+        
+        if verbo:
+            loguru.logger.debug(f'Looking up all docs...')
+        rocket_features = self.get_rocket_features()
+        doc_ids = self.get_doc_ids()
+        
+        if verbo:
+            loguru.logger.debug(f'Finding similar sample using ridge classifier...')
+        alpha = 1.0 if alpha is None else alpha
+        ridge_model = RidgeClassifier(alpha=alpha)
+        ridge_model.fit(rocket_features, doc_ids)
+        result_id = ridge_model.predict(query)
+        score = ridge_model.score(rocket_features, doc_ids)
+        
+        return (result_id, score)
+        
 
 if __name__ == "__main__":
     loguru.logger.debug(f'Testing on vector store module...')
@@ -162,10 +208,17 @@ if __name__ == "__main__":
                                       verbo=True)
 
     loguru.logger.debug(f'Retrieveling...')
-    s, ids = vector_store.knn_query(if_rocket_feature, k=5, verbo=True)
 
-    print(f'Retrievel following results for the given time series {if_ts_filename}:')
-    for i in range(len(s)):
-        print(f'File: {ids[i]}, score: {s[i]}')    
+    print(f'Retrievel following results using 1-NN for the given time series {if_ts_filename}:')
+    ids, dists = vector_store.knn_query(if_rocket_feature, k=1, verbo=True)
+    print(f'File: {ids}, distances: {dists}')   
+    
+    print(f'Retrievel following results using 5-NN for the given time series {if_ts_filename}:')
+    ids, dists = vector_store.knn_query(if_rocket_feature, k=5, verbo=True)
+    print(f'File: {ids}, distances: {dists}')   
+    
+    print(f'Retrievel following results using Ridge for the given time series {if_ts_filename}:')
+    result_id, score = vector_store.ridge_query(if_rocket_feature, alpha=1.0, verbo=True)
+    print(f'File: {result_id}, score: {score}')
 
     loguru.logger.info('Testing on vector store module DONE!')
