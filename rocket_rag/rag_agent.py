@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import loguru
@@ -29,10 +30,11 @@ class RagAgent:
         self.nodes = self.ni.load_node_indexing(vs_dir)
         self.vs.add(self.nodes)
         assert len(self.nodes) == 0, f'No docs in the vector store!'
+        self.query_mode = ""
         self.ts_rocket = None
         self.query_res = None
-        
-        self.fault_diagnosis_statement = None
+        self.fault_diagnosis_json: Dict = None
+        self.memory = [] # The memory for the dialog history
         
         self._init_openai_client()
 
@@ -76,6 +78,7 @@ class RagAgent:
             self.query_res = self.vs.ridge_query(self.ts_rocket)
         elif mode == 'knn':
             self.query_res = self.vs.knn_query(self.ts_rocket)
+        self.query_mode = mode
         return self.query_res
     
     def generate_response(self, 
@@ -125,19 +128,32 @@ class RagAgent:
         if self.query_res is None:
             raise ValueError("Please run the get_fault_prediction method to get the query reuslt first.")
         
-        ids, sco = self.query_res
+        idx, vals = self.query_res
         sys_prompt = fault_diagnosis_prompt.sys_prompt
-        user_prompt = fault_diagnosis_prompt.user_prompt.format(res=str(ids[0], score=str(sco[0])))
-        
+        user_prompt = fault_diagnosis_prompt.ridge_prompt.format(res=idx, score=vals) if self.query_mode == 'ridge' else \
+                      fault_diagnosis_prompt.knn_prompt.format(res=idx, distances=vals)
+ 
         messages = [
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": user_prompt}
         ]
+        self.memory = messages
         
         response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
+        resp_json_str = response.choices[0].message.content
+        self.memory.append({"role": "assistant", "content": resp_json_str})
+        self.fault_diagnosis_json = json.loads(resp_json_str)
+        return self.fault_diagnosis_json
+    
+    def formalize_query(query: str):
+        """Preprocess the query for the vector store query
         
-        self.fault_diagnosis_statement = response.choices[0].message.content
-        return self.fault_diagnosis_statement
+        Remove some symbols including '-', '"', '.' and indexing numbers or patterns like 1. 2. 3. ...
+        """
+        query = query.strip().replace('"', '').replace('. ', '')
+        pattern = re.compile(r'[-0-9]+|\d+\. ')
+        result = pattern.sub('', query)
+        return result.strip()
     
     def generate_multi_queries(self) -> str:
         """ Generate a fault diagnosis statement from the given prompts.
@@ -148,7 +164,25 @@ class RagAgent:
             str: The generated fault diagnosis statement.
         """
         
-        if self.fault_diagnosis_statement is None:
+        if self.fault_diagnosis_json is None:
             raise ValueError("Please run the generate_fault_diagnosis_statement method to get the fault diagnosis statement first.")
         
+        if not isinstance(self.fault_diagnosis_json, dict):
+            raise ValueError("The fault diagnosis statement is not a JSON object.")
         
+        fault_type = self.fault_diagnosis_json['fault_type']
+        fault_description = self.fault_diagnosis_json['description']
+        sys_prompt = multi_queries_gen_prompt.sys_prompt
+        user_prompt = multi_queries_gen_prompt.user_prompt.format(fault_type=fault_type, 
+                                                                  fault_description=fault_description,
+                                                                  num=str(5))
+        
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        self.memory += messages
+        
+        response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
+        multi_queries_gen = response.choices[0].message.content
+        generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
