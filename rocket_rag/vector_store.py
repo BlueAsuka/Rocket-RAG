@@ -5,6 +5,7 @@ https://docs.llamaindex.ai/en/latest/examples/low_level/vector_store.html
 """
 
 import os
+import sys
 import random
 import loguru
 import numpy as np
@@ -12,9 +13,6 @@ import numpy as np
 from typing import List, Any, Dict, Tuple
 from tqdm.auto import tqdm
 
-import sys
-
-from yaml import load_all
 sys.path.append("..")
 from rocket_rag.utils import *
 from rocket_rag.node import Node
