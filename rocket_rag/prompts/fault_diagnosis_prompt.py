@@ -49,8 +49,14 @@ If the "score" is not provide, then remain "". If the "distances" is not provide
 
 sys_prompt = prefix + context + rules + diagnosis_output
 
-user_prompt = """
+ridge_prompt = """
 USER_PROMPT:
-An initial fault detection results list is provided: {res}. \
-The similarities score of each reuslt is {score}. \
+An fault prediction is provided: {res}. \
+The "score" is {score}. \
+Please try to report and analyze the state of the system following given requirements and instructions step by step."""
+
+knn_prompt = """
+USER_PROMPT:
+An fault prediction list is provided: {res}. \
+The "distances" are {distances}. \
 Please try to report and analyze the state of the system following given requirements and instructions step by step."""

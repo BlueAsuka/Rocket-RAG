@@ -8,7 +8,7 @@ from typing import List, Dict
 
 from node_indexing import NodeIndexer
 from vector_store import VectorStore
-from prompts import fault_diagnosis_prompt
+from prompts import fault_diagnosis_prompt, multi_queries_gen_prompt
 from utils import fit_transform
 
 
@@ -31,6 +31,8 @@ class RagAgent:
         assert len(self.nodes) == 0, f'No docs in the vector store!'
         self.ts_rocket = None
         self.query_res = None
+        
+        self.fault_diagnosis_statement = None
         
         self._init_openai_client()
 
@@ -111,7 +113,7 @@ class RagAgent:
         
         return response
     
-    def fault_diagnosis_statement_generation(self) -> str:
+    def generate_fault_diagnosis_statement(self) -> str:
         """ Generate a fault diagnosis statement from the given prompts.
         
         Args:
@@ -134,5 +136,19 @@ class RagAgent:
         
         response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
         
-        return response.choices[0].message.content
+        self.fault_diagnosis_statement = response.choices[0].message.content
+        return self.fault_diagnosis_statement
     
+    def generate_multi_queries(self) -> str:
+        """ Generate a fault diagnosis statement from the given prompts.
+        
+        Args:
+        
+        Returns:
+            str: The generated fault diagnosis statement.
+        """
+        
+        if self.fault_diagnosis_statement is None:
+            raise ValueError("Please run the generate_fault_diagnosis_statement method to get the fault diagnosis statement first.")
+        
+        
