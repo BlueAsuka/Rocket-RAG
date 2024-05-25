@@ -42,7 +42,7 @@ EXAMPLE:
     "description": "The actuator is operating with insufficient lubrication, leading to increased friction and potential for wear and tear, impacting performance and longevity."
 }
 
-Description of the Fault is a Summarization from the CONTEXT.
+"description" of the Fault is a Summarization from the CONTEXT and highlight the severeness of the fault by the "degradation_level".
 The "score" is the mean accuracy score of the diagnosis result using the ridge classifier.
 The "distances" is the list of the distances between the new samples and K nearest neightbours.
 The "score" and "distances" provided in USER_PROMPT, fill the term according to USER_PROMPT input.
