@@ -148,8 +148,8 @@ def fit_transform(ts_filename: List[str],
     if verbo:
         loguru.logger.debug(f'Extract the time series data points')
     if not isinstance(ts_filename, list):
-        loguru.logger.error(f'The input ts_filename must be a list, but got {type(ts_filename)}, \
-                                The single filename can be warpped by [] for valid input.')
+        loguru.logger.warning(f'The single filename string is warpped by [] for valid input.')
+        ts_filename = [ts_filename]
 
     ts = np.array([fit(ts_filename=tf,
                          field=field,

@@ -198,7 +198,7 @@ if __name__ == "__main__":
     if_ts_filename = if_ts_files[rand_idx]
 
     # Warp the filename string as a list and do the ROCKET transformation
-    if_rocket_feature = fit_transform([if_ts_filename],
+    if_rocket_feature = fit_transform(if_ts_filename,
                                       field='current',
                                       smooth=True,
                                       smooth_ws=15,
