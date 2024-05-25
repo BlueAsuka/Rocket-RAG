@@ -140,7 +140,7 @@ class VectorStore(BaseVectorStore):
         knn_model = KNeighborsClassifier(n_neighbors=k, metric=metric, weights='distance')
         knn_model.fit(rocket_features, doc_ids)
         distances, ids = knn_model.kneighbors(query, n_neighbors=k, return_distance=True)
-        result_ids = [[ids_to_doc[i] for i in ids.tolist()[0]]]
+        result_ids = [ids_to_doc[i] for i in ids.tolist()[0]]
 
         return (result_ids, distances.squeeze().tolist())
     
@@ -171,7 +171,7 @@ class VectorStore(BaseVectorStore):
         
         if verbo:
             loguru.logger.debug(f'Finding similar sample using ridge classifier...')
-        alpha = 1.0 if alpha is None else alpha
+        alpha = 0.5 if alpha is None else alpha
         ridge_model = RidgeClassifier(alpha=alpha)
         ridge_model.fit(rocket_features, doc_ids)
         result_id = ridge_model.predict(query)
