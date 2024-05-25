@@ -28,24 +28,29 @@ EXAMPLE:
 diagnosis_output = """
 FORMAT_OUTPUT:
 Based on the new refined labels list, try to summarize all possible faults of the system, and give description based on information provided in context.
-Output a statement based on the following format:
+Output a statement in JSON FORMAT:
 
 EXAMPLE:
-Retrieval results: ['backlash2_20_10_2', 'lackLubrication1_20_5_5', 'lackLubrication1_20_9_3', 'lackLubrication1_20_2_3', 'backlash2_20_2_4']
-Diagonsis results:
-Refined fault type1: Fault in backlash
-Inference evidence: [backlash2_20_10_2 with <similarity>, backlash2_20_2_4 with <similarity>]
-Description of the Fault: Summarize from CONTEXT
+{
+    "fault_type": "lackLubrication",
+    "degradation_level": 1,
+    "retrieval_result(s): lackLubrication1_20_5_5,
+    "score": "",
+    "distances": [],
+    "description": "The actuator is operating with insufficient lubrication, leading to increased friction and potential for wear and tear, impacting performance and longevity."
+}
 
-Refined fault type2: Fault in lack of lubrication
-Inference evidence: [lackLubrication1_20_5_5 with <similarity>, lackLubrication1_20_9_3 with <similarity>, lackLubrication1_20_2_3 with <similarity>]
-Description of the Fault: Summarize from CONTEXT
-
-The <similarity> is the number provided in below similarities score given by user. Please try to complete and replace this term by the corresponding number.
+Description of the Fault is a Summarization from the CONTEXT.
+The "score" is the mean accuracy score of the diagnosis result using the ridge classifier.
+The "distances" is the list of the distances between the new samples and K nearest neightbours.
+The "score" and "distances" provided in USER_PROMPT, fill the term according to USER_PROMPT input.
+If the "score" is not provide, then remain "". If the "distances" is not provide, then remain [].
 """
 
 sys_prompt = prefix + context + rules + diagnosis_output
 
-user_prompt = "An initial fault detection results list is provided: {res}. \
+user_prompt = """
+USER_PROMPT:
+An initial fault detection results list is provided: {res}. \
 The similarities score of each reuslt is {score}. \
-Please try to report and analyze the state of the system following given requirements and instructions step by step."
+Please try to report and analyze the state of the system following given requirements and instructions step by step."""
