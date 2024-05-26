@@ -67,4 +67,5 @@ class Tools():
 
         if len(self.tools) == 0:
             return {"": None}
-        return {n:f for n, f in Tools.__dict__.items() if not n.startswith("_") and callable(f)}
+        self.available_tools = {n:f for n, f in Tools.__dict__.items() if not n.startswith("_") and callable(f)}
+        return self.available_tools
