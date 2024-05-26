@@ -21,6 +21,7 @@ class Tools():
 
     def __init__(self) -> None:
 
+        self.available_tools = None
         self.tools = [
         {
             "type": "function",
@@ -61,7 +62,9 @@ class Tools():
         res_snippets = [r['snippet'] for r in res_items]
         return str(res_snippets)
     
-    def get_tools(self):
+    def get_available_tools(self):
         """ Get the tools available for GPT """
 
+        if len(self.tools) == 0:
+            return {"": None}
         return {n:f for n, f in Tools.__dict__.items() if not n.startswith("_") and callable(f)}
