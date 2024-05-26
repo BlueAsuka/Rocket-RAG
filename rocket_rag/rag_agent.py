@@ -6,12 +6,15 @@ import loguru
 
 from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
+from tqdm.auto import tqdm
 
+from utils import fit_transform
 from node_indexing import NodeIndexer
 from vector_store import VectorStore
-from prompts import fault_diagnosis_prompt, multi_queries_gen_prompt
-from utils import fit_transform
-
+from tools import Tools
+from prompts import (fault_diagnosis_prompt, 
+                     multi_queries_gen_prompt, 
+                     tool_usage_prompt)
 
 VS_DIR = '../store/'
 CONFIG_DIR = '../config/'
@@ -33,8 +36,11 @@ class RagAgent:
         self.query_mode = ""
         self.ts_rocket = None
         self.query_res = None
-        self.fault_diagnosis_json: Dict = None
+        self.fault_diagnosis_json: Dict[str, str] = None
+        self.generated_queries: List[str] = None
+        self.query_answers: List[str] = None
         self.memory = [] # The memory for the dialog history
+        self.tools = Tools() # The tools for calling 
         
         self._init_openai_client()
 
@@ -109,6 +115,7 @@ class RagAgent:
                 messages=prompts,
                 response_format=response_format,
                 temperature=temperature,
+                tools=self.tools.tools,
                 stream=stream
             )
         except OpenAIError as e:
@@ -185,4 +192,61 @@ class RagAgent:
         
         response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
         multi_queries_gen = response.choices[0].message.content
-        generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
+        self.generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
+        return self.generated_queries
+    
+    def call_google_search(self, query: List[str]):
+        """Call the Google search API to get the search results.
+        
+        Args:
+            query (a list of str): The list of query string.
+            
+        Returns:
+            list: A list of search results.
+        """
+
+        num_query = len(query)
+        for i, q in enumerate(query):
+            loguru.logger.info(f'Calling Google search API for query {i+1}/{num_query}')
+
+            call_google_messages = [
+                {"role": "system", "content": tool_usage_prompt.call_google},
+                {"role": "user", "content": tool_usage_prompt.call_google_user_input.format(q=q)}
+            ]
+
+            # Whether to store the call_google_messages and searching result in the memory is still under discussion.
+            # self.memory += call_google_messages
+
+            call_google_response = self.generate_response(call_google_messages, 
+                                                          temperature=0.1, 
+                                                          ac=False, 
+                                                          stream=False)
+            call_google_messages.append({"role": "assistant", "content": call_google_response.choices[0].message.content})
+            tool_calls = call_google_response.choices[0].message.tool_calls
+            if tool_calls:
+                for tool_call in tool_calls:
+                    # Call the function 
+                    function_name = tool_call.function.name
+                    function_to_call = self.tools.available_tools[function_name]
+                    function_args = json.loads(tool_call.function.arguments)
+                    function_response = function_to_call(**function_args)
+
+                    # Add the tool call result and feed back to the GPT
+                    call_google_messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response,
+                        }
+                    )
+
+            # Get the final result after processing
+            get_searching_response = self.generate_response(call_google_messages,
+                                                            temperature=0.1,  
+                                                            ac=False,
+                                                            stream=False)
+            self.query_answers.append(get_searching_response.choices[0].message.content)
+        return self.query_answers
+    
+    
