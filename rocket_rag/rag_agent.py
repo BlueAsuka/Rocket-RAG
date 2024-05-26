@@ -3,6 +3,7 @@ import re
 import sys
 import json
 import loguru
+import asyncio
 
 from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
@@ -14,7 +15,8 @@ from vector_store import VectorStore
 from tools import Tools
 from prompts import (fault_diagnosis_prompt, 
                      multi_queries_gen_prompt, 
-                     tool_usage_prompt)
+                     tool_usage_prompt,
+                     text_summarization_prompt)
 
 VS_DIR = '../store/'
 CONFIG_DIR = '../config/'
@@ -162,10 +164,11 @@ class RagAgent:
         result = pattern.sub('', query)
         return result.strip()
     
-    def generate_multi_queries(self) -> str:
+    def generate_multi_queries(self, num_queries: int=5) -> str:
         """ Generate a fault diagnosis statement from the given prompts.
         
         Args:
+            num_queries (int, optional): The number of queries to generate. Defaults to 5.
         
         Returns:
             str: The generated fault diagnosis statement.
@@ -182,7 +185,7 @@ class RagAgent:
         sys_prompt = multi_queries_gen_prompt.sys_prompt
         user_prompt = multi_queries_gen_prompt.user_prompt.format(fault_type=fault_type, 
                                                                   fault_description=fault_description,
-                                                                  num=str(5))
+                                                                  num=str(num_queries))
         
         messages = [
             {"role": "system", "content": sys_prompt},
@@ -249,4 +252,32 @@ class RagAgent:
             self.query_answers.append(get_searching_response.choices[0].message.content)
         return self.query_answers
     
-    
+    def gather_query_answers(self, num_children: int=3, verbose: bool=False):
+        """ Gather the query answers from the Google search API. 
+        
+        Args:
+            num_children (int): The number of children to be generated. Defaults to 3.
+            verbose (bool): Whether to print the progress. Defaults to False.
+
+
+        Returns:
+            list: A list of query answers.
+        """
+
+        if not self.query_answers:
+            raise ValueError('No answer is needed to be combined.')
+        
+        node_batch_prompts = []
+        for idx in range(0, len(self.query_answers), num_children):
+            # only looks at num_children (in default 3) answers at once
+            node_batch = self.query_answers[idx: idx+num_children]
+            node_batch_text = "\n\n".join([node for node in node_batch])
+            # Parse the prompt for summerization with given answers
+            temp_prompt = text_summarization_prompt.user_prompt.format(text=node_batch_text)
+            node_batch_prompts.append(temp_prompt)
+        
+        # Use async model to generate the summerization 
+        tasks = [self.generate_response(prompt=[
+                                                {"role": "system", "content": text_summarization_prompt.sys_prompt},
+                                                {"role": "user", "content": prompt}], 
+                                        temperature=0.3, ac=True) for prompt in node_batch_prompts]
