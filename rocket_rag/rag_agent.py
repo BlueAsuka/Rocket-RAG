@@ -4,6 +4,7 @@ import sys
 import json
 import loguru
 import asyncio
+import datetime
 
 from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
@@ -19,6 +20,7 @@ from prompts import (fault_diagnosis_prompt,
                      text_summarization_prompt)
 
 VS_DIR = '../store/'
+LOG_DIR = '../logs/'
 CONFIG_DIR = '../config/'
 CONFIG_FILE = 'config.json'
 with open(os.path.join(CONFIG_DIR, CONFIG_FILE), 'r') as f:
@@ -38,13 +40,17 @@ class RagAgent:
         self.query_mode = ""
         self.ts_rocket = None
         self.query_res = None
+
+        # The following attributes are used to store the intermedium results of the RAG agent.
         self.fault_diagnosis_json: Dict[str, str] = None
         self.generated_queries: List[str] = None
         self.query_answers: List[str] = None
+        self.text_summarization: List[str] = None
+
         self.memory = [] # The memory for the dialog history
         self.tools = Tools() # The tools for calling 
         
-        self._init_openai_client()
+        self._init_openai_client() # Initialize the OpenAI client
 
     def _init_openai_client(self):
         """ Initialize the OpenAI client. """
@@ -252,7 +258,7 @@ class RagAgent:
             self.query_answers.append(get_searching_response.choices[0].message.content)
         return self.query_answers
     
-    def gather_query_answers(self, num_children: int=3, verbose: bool=False):
+    async def gather_query_answers(self, num_children: int=3, verbose: bool=False):
         """ Gather the query answers from the Google search API. 
         
         Args:
@@ -267,17 +273,40 @@ class RagAgent:
         if not self.query_answers:
             raise ValueError('No answer is needed to be combined.')
         
+        # Get the system prompt for the text summarization
+        text_summarization_sys_prompt = text_summarization_prompt.sys_prompt
+
+        # Parse the prompt message for each node including several answers 
         node_batch_prompts = []
         for idx in range(0, len(self.query_answers), num_children):
             # only looks at num_children (in default 3) answers at once
             node_batch = self.query_answers[idx: idx+num_children]
             node_batch_text = "\n\n".join([node for node in node_batch])
             # Parse the prompt for summerization with given answers
-            temp_prompt = text_summarization_prompt.user_prompt.format(text=node_batch_text)
+            text_summarization_user_prompt = text_summarization_prompt.user_prompt.format(text=node_batch_text)
+            temp_prompt = [
+                {"role": "system", "content": text_summarization_sys_prompt},
+                {"role": "user", "content": text_summarization_user_prompt}
+            ]
             node_batch_prompts.append(temp_prompt)
         
-        # Use async model to generate the summerization 
-        tasks = [self.generate_response(prompt=[
-                                                {"role": "system", "content": text_summarization_prompt.sys_prompt},
-                                                {"role": "user", "content": prompt}], 
-                                        temperature=0.3, ac=True) for prompt in node_batch_prompts]
+        # Use async mode to generate the summerization 
+        tasks = [self.generate_response(prompt=p, temperature=0.3, ac=True) for p in node_batch_prompts]
+        combined_responses = await asyncio.gather(*tasks)
+        self.text_summarization = [r.choices[0].message.content for r in combined_responses]
+
+        if len(self.text_summarization) == 1:
+            loguru.logger.info("Combined all responses to one. Done")
+            return self.text_summarization[0]
+        else:
+            loguru.logger.info(f"Combined into {len(self.text_summarization)} responses, keep combining")
+        if verbose:
+            loguru.logger.info(self.text_summarization)
+        return await self.gather_query_answers()
+
+    def parse_output_file(self, output_file: str):
+        """ Parse the output file to form and store the report for decision support.
+
+        Args:
+            output_file (str): The output file path.
+        """
