@@ -10,6 +10,7 @@ from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
 from tqdm.auto import tqdm
 
+from rocket_rag.prompts import parse_output_prompt
 from utils import fit_transform
 from node_indexing import NodeIndexer
 from vector_store import VectorStore
@@ -17,7 +18,8 @@ from tools import Tools
 from prompts import (fault_diagnosis_prompt, 
                      multi_queries_gen_prompt, 
                      tool_usage_prompt,
-                     text_summarization_prompt)
+                     text_summarization_prompt,
+                     parse_output_prompt)
 
 VS_DIR = '../store/'
 LOG_DIR = '../logs/'
@@ -159,6 +161,20 @@ class RagAgent:
         self.memory.append({"role": "assistant", "content": resp_json_str})
         self.fault_diagnosis_json = json.loads(resp_json_str)
         return self.fault_diagnosis_json
+    
+    def refine_fault_diagnosis_statement(self):
+        """ Refine the fault diagnosis statement based on the user's feedback.
+        
+        Args:
+        
+        Returns:
+            str: The refined fault diagnosis statement.
+        """
+        
+        if self.fault_diagnosis_json is None:
+            raise ValueError("Please run the generate_fault_diagnosis_statement method to get the fault diagnosis statement first.")
+        
+        pass
     
     def formalize_query(query: str):
         """Preprocess the query for the vector store query
@@ -304,9 +320,43 @@ class RagAgent:
             loguru.logger.info(self.text_summarization)
         return await self.gather_query_answers()
 
-    def parse_output_file(self, output_file: str):
+    def parse_output_file(self, file_name: str):
         """ Parse the output file to form and store the report for decision support.
 
         Args:
             output_file (str): The output file path.
         """
+
+        # Extract all necessary information from the output file
+        fault_type = self.fault_diagnosis_json["fault_type"]
+        fault_level = self.fault_diagnosis_json["degradation_level"]
+        fault_description = self.fault_diagnosis_json["description"]
+        fault_text = f"Fault Type Diagnosis: {fault_type} \n\n" + \
+                          f"Degradation Level: {fault_level} \n\n" + \
+                              f"Fault Description: {fault_description}"
+
+        queries = [str(i+1) + ". " + q for i, q in enumerate(self.query_answers)]
+        querys_text = "\n\n".join(queries)
+
+        answers = [str(i+1) + ". " + a for i, a in enumerate(self.text_summarization)]
+        answers_text = "\n\n".join(answers)
+
+        rec_text = self.text_summarization[0]
+
+        # Parse the output path
+        dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+        file_path = os.path.join(LOG_DIR, (file_name + dt + ".md"))
+
+        parse_output_messages = [
+            {"role": "system", "content": parse_output_prompt.sys_prompt},
+            {"role": "user", "content": parse_output_prompt.user_prompt.format(fault_text=fault_text, 
+                                                                               query_text=querys_text, 
+                                                                               answer_text=answers_text, 
+                                                                               rec_text=rec_text,
+                                                                               file_path=file_path)},
+        ]
+        response = self.generate_response(prompts=parse_output_messages, temperature=0.1)
+
+        # Check whether the file is parsed and stored successfully
+        if os.path.exists(file_path):
+            loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
