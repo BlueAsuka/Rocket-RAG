@@ -50,6 +50,7 @@ class RagAgent:
         self.generated_queries: List[str] = None
         self.query_answers: List[str] = None
         self.text_summarization: List[str] = None
+        self.output_contents: str = None
 
         self.memory = [] # The memory for the dialog history
         self.tools = Tools() # The tools for calling 
@@ -65,7 +66,7 @@ class RagAgent:
             loguru.logger.info("OpenAI API key found. Initialized OpenAI client.")
         else:
             raise ValueError("OpenAI API key not found. \
-                             Please set the OPENAI_API_KEY environment variable in variable env or config file.")
+                              Please set the OPENAI_API_KEY environment variable in variable env or config file.")
     
     def get_rocket_feature(self, ts_file:str):
         """ Get the rocket feature from the given time series file. 
@@ -340,7 +341,7 @@ class RagAgent:
             loguru.logger.info(self.text_summarization)
         return await self.gather_query_answers()
 
-    def parse_output_file(self, file_name: str, show_refinement:bool=True):
+    def parse_output_contents(self, file_name: str, show_refinement:bool=True):
         """ Parse the output file to form and store the report for decision support.
 
         Args:
@@ -366,32 +367,40 @@ class RagAgent:
 
         rec_text = self.text_summarization[0]
 
-        # Parse the output path
-        dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-        file_path = os.path.join(LOG_DIR, (file_name + dt + ".md"))
-
         parse_output_messages = [
             {"role": "system", "content": parse_output_prompt.sys_prompt},
             {"role": "user", "content": parse_output_prompt.user_prompt.format(fault_text=fault_text, 
                                                                                query_text=querys_text, 
                                                                                answer_text=answers_text, 
-                                                                               rec_text=rec_text,
-                                                                               file_path=file_path)},
+                                                                               rec_text=rec_text)},
         ]
-        _ = self.generate_response(prompts=parse_output_messages, temperature=0.1)
-
+        
+        response = self.generate_response(prompts=parse_output_messages, temperature=0.1)
+        self.output_contents = response.response.choices[0].message.content
+        return self.output_contents
+    
+    def save_output_contents(self, file_name: str):
+        """ Save the output contents to the output file. 
+        
+        Args:
+            file_name (str): The output file name.
+        """
+        
+        # Parse the output path
+        dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+        file_path = os.path.join(LOG_DIR, (file_name + dt + ".md"))
+        
+        if not self.output_contents:
+            raise ValueError("No output contents to save")
+        
+        # Write the output contents to the output file        
+        try:
+            with open(file_path, "w", encoding='utf-8') as f:
+                f.write(self.output_contents)
+            loguru.logger.info(f"Parse the file to the {file_path}")
+        except Exception as e: 
+            raise Exception(f"Failed to save report to {file_path}")
+                
         # Check whether the file is parsed and stored successfully
         if os.path.exists(file_path):
             loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
-        # If the GPT cannot parse the file, then output it by the writing to the file method.
-        else:
-            try:
-                with open(file_path, "w", encoding='utf-8') as f:
-                    f.write("# FAULT DIAGNOSIS REPORT \n\n" \
-                        "## SYSTEM INFORMATION \n\n"+ fault_text + "\n\n" \
-                        "## SEARCH QUERY \n\n" + querys_text + "\n\n" \
-                        "## SEARCH RESULTS \n\n" + answers_text + "\n\n" \
-                        "## RECOMMENDATIONS \n\n" + rec_text)
-                loguru.logger.info(f"Parse the file to the {file_path}")
-            except Exception as e: 
-                raise Exception(f"Failed to save report to {file_path}")
