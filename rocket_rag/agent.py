@@ -198,10 +198,12 @@ class RagAgent:
         self.refined_diagnosis_json = json.loads(refined_json_str)
         return self.refined_diagnosis_json
         
-    def formalize_query(query: str):
-        """Preprocess the query for the vector store query
+    def formalize_query(self, query: str):
+        """ Preprocess the query for the vector store query
+            Remove some symbols including '-', '"', '.' and indexing numbers or patterns like 1. 2. 3. ...
         
-        Remove some symbols including '-', '"', '.' and indexing numbers or patterns like 1. 2. 3. ...
+        Args:
+            query (str): The query to be preprocessed.
         """
         query = query.strip().replace('"', '').replace('. ', '')
         pattern = re.compile(r'[-0-9]+|\d+\. ')
@@ -246,20 +248,20 @@ class RagAgent:
         self.generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
         return self.generated_queries
     
-    def call_google_search(self, query: List[str]):
+    def call_google_search(self):
         """Call the Google search API to get the search results.
         
         Args:
-            query (a list of str): The list of query string.
             
         Returns:
             list: A list of search results.
         """
 
-        num_query = len(query)
-        for i, q in enumerate(query):
-            loguru.logger.info(f'Calling Google search API for query {i+1}/{num_query}')
+        if not self.generated_queries:
+            raise ValueError("Please run the generate_multi_queries method to get the generated queries first.")
 
+        num_query = len(self.generated_queries)
+        for i, q in tqdm(enumerate(self.generated_queries)):
             call_google_messages = [
                 {"role": "system", "content": tool_usage_prompt.call_google},
                 {"role": "user", "content": tool_usage_prompt.call_google_user_input.format(q=q)}
@@ -271,14 +273,18 @@ class RagAgent:
             call_google_response = self.generate_response(call_google_messages, 
                                                           temperature=0.1, 
                                                           ac=False, 
+                                                          tools=True,
                                                           stream=False)
             call_google_messages.append({"role": "assistant", "content": call_google_response.choices[0].message.content})
             tool_calls = call_google_response.choices[0].message.tool_calls
+            available_tools = self.tools.get_available_tools() # Get all available tools
             if tool_calls:
+                loguru.logger.info(f'Calling Google search API for query {i+1}/{num_query}')
+
                 for tool_call in tool_calls:
                     # Call the function 
                     function_name = tool_call.function.name
-                    function_to_call = self.tools.available_tools[function_name]
+                    function_to_call = available_tools[function_name]
                     function_args = json.loads(tool_call.function.arguments)
                     function_response = function_to_call(**function_args)
 
@@ -296,6 +302,7 @@ class RagAgent:
             get_searching_response = self.generate_response(call_google_messages,
                                                             temperature=0.1,  
                                                             ac=False,
+                                                            tools=True,
                                                             stream=False)
             self.query_answers.append(get_searching_response.choices[0].message.content)
         return self.query_answers
