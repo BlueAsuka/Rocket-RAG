@@ -25,5 +25,4 @@ refinement: {refine_text}
 query: {query_text}
 answer: {answer_text}
 rec: {rec_text}
-save the file in the path {file_path}
 """
