@@ -180,11 +180,11 @@ class RagAgent:
         user_prompt = refinement_prompt.user_prompt.format(ft=self.fault_diagnosis_json['fault_type'],
                                                            dl=self.fault_diagnosis_json['degradation_level'])
         
-        refinement_prompt = [
+        refinement_messages = [
             {"role": "system", "content": sys_prompt},  
             {"role": "user", "content": user_prompt}
         ]
-        self.memory += refinement_prompt
+        self.memory += refinement_messages
             
         response = self.generate_response(self.memory, temperature=0.1, ac=False,  json=True,stream=False)
         refined_json_str = response.choices[0].message.content
@@ -340,20 +340,23 @@ class RagAgent:
             loguru.logger.info(self.text_summarization)
         return await self.gather_query_answers()
 
-    def parse_output_file(self, file_name: str):
+    def parse_output_file(self, file_name: str, show_refinement:bool=True):
         """ Parse the output file to form and store the report for decision support.
 
         Args:
             output_file (str): The output file path.
+            show_refinement (bool): Whether to show the refinement diagnosis result. Defaults to True.
         """
 
         # Extract all necessary information from the output file
         fault_type = self.fault_diagnosis_json["fault_type"]
         fault_level = self.fault_diagnosis_json["degradation_level"]
+        fault_refinement = self.refined_diagnosis_json["refinement"] if show_refinement else None
         fault_description = self.fault_diagnosis_json["description"]
         fault_text = f"Fault Type Diagnosis: {fault_type} \n\n" + \
                           f"Degradation Level: {fault_level} \n\n" + \
-                              f"Fault Description: {fault_description}"
+                              f"Fault Refinement: {fault_refinement} \n\n" + \
+                                  f"Fault Description: {fault_description}"
 
         queries = [str(i+1) + ". " + q for i, q in enumerate(self.query_answers)]
         querys_text = "\n\n".join(queries)
@@ -375,8 +378,20 @@ class RagAgent:
                                                                                rec_text=rec_text,
                                                                                file_path=file_path)},
         ]
-        response = self.generate_response(prompts=parse_output_messages, temperature=0.1)
+        _ = self.generate_response(prompts=parse_output_messages, temperature=0.1)
 
         # Check whether the file is parsed and stored successfully
         if os.path.exists(file_path):
             loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
+        # If the GPT cannot parse the file, then output it by the writing to the file method.
+        else:
+            try:
+                with open(file_path, "w", encoding='utf-8') as f:
+                    f.write("# FAULT DIAGNOSIS REPORT \n\n" \
+                        "## SYSTEM INFORMATION \n\n"+ fault_text + "\n\n" \
+                        "## SEARCH QUERY \n\n" + querys_text + "\n\n" \
+                        "## SEARCH RESULTS \n\n" + answers_text + "\n\n" \
+                        "## RECOMMENDATIONS \n\n" + rec_text)
+                loguru.logger.info(f"Parse the file to the {file_path}")
+            except Exception as e: 
+                raise Exception(f"Failed to save report to {file_path}")
