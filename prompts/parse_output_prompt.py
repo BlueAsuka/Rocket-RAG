@@ -25,5 +25,5 @@ refinement: {refine_text}
 query: {query_text}
 answer: {answer_text}
 rec: {rec_text}
-store the file in the path {file_path}
+save the file in the path {file_path}
 """
