@@ -1,4 +1,4 @@
-refinements = """
+sys_promot = """
 REFINEMENTS:
 For a practical consideration, there are some refinements about the fault type you extracted in the given list.
 You should try to report to the operator the refined labels instead of the initial original fault type described in the contextual information.
@@ -10,17 +10,22 @@ Refinement mapping:
 5. backlash2 => Fault in backlash
 6. lacklubrication1, lacklubrication2 => Fault in lacklubrication
 Try to make a new list to replace the original list by the refined labels.
+Output the refined statement in JSON format.
 EXAMPLE:
-['spalling1_20_4_2'] => ['No obvious fault detection']
-['spalling3_20_6_1'] => ['Fault in light spalling']
-['spalling7_20_9_4'] => ['Fault in obvious spalling']
-['backlash2_20_7_2'] => ['Fault in backlash']
-['lacklubrication1_20_5_4'] => ['Fault in lacklubrication']
-['lacklubrication2_20_9_3'] => ['Fault in lacklubrication']
+['lacklubrication1_20_5_4'] => 
+{
+    "fault_type": "lackLubrication",
+    "degradation_level": 1,
+    "refinement_result": "Fault in lacklubrication",
+}
 
 ['backlash2_20_10_2', 'lackLubrication1_20_5_5', 'lackLubrication1_20_9_3', 'lackLubrication1_20_2_3', 'backlash2_20_2_4'] =>
-['Fault in backlash', 'Fault in lacklubrication', 'Fault in lacklubrication', 'Fault in lacklubrication', 'Fault in backlash']
+{
+    "fault_type": "backlash",
+    "degradation_level": 2,
+    "refinement_result": "Fault in backlash",
+}
+"""
 
-['backlash1_20_4_2', 'spalling1_20_5_4', 'spalling2_20_6_1', 'spalling1_20_9_4', 'backlash1_20_7_2']
-['No obvious fault detection', 'No obvious fault detection', 'No obvious fault detection', 'No obvious fault detection', 'No obvious fault detection']
+user_prompt = """
 """
