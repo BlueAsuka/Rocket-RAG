@@ -47,7 +47,7 @@ class RagAgent:
         self.fault_diagnosis_json: Dict[str, str] = None
         self.refined_diagnosis_json: Dict[str, str] = None
         self.generated_queries: List[str] = None
-        self.query_answers: List[str] = None
+        self.query_answers: List[str] = []
         self.text_summarization: List[str] = None
         self.output_contents: str = None
 
@@ -248,10 +248,11 @@ class RagAgent:
         self.generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
         return self.generated_queries
     
-    def call_google_search(self):
+    def call_google_search(self, verbose: bool=False):
         """Call the Google search API to get the search results.
         
         Args:
+            verbose (bool, optional): Whether to print the searching procedures and results. Defaults to False.
             
         Returns:
             list: A list of search results.
@@ -275,18 +276,20 @@ class RagAgent:
                                                           ac=False, 
                                                           tools=True,
                                                           stream=False)
-            call_google_messages.append({"role": "assistant", "content": call_google_response.choices[0].message.content})
+            call_google_messages.append(call_google_response.choices[0].message)
             tool_calls = call_google_response.choices[0].message.tool_calls
             available_tools = self.tools.get_available_tools() # Get all available tools
             if tool_calls:
                 loguru.logger.info(f'Calling Google search API for query {i+1}/{num_query}')
 
+                # Parse the josn to call the function
                 for tool_call in tool_calls:
-                    # Call the function 
                     function_name = tool_call.function.name
                     function_to_call = available_tools[function_name]
                     function_args = json.loads(tool_call.function.arguments)
                     function_response = function_to_call(**function_args)
+                    if verbose:
+                        loguru.logger.debug(f'Obtained results from {function_name}')
 
                     # Add the tool call result and feed back to the GPT
                     call_google_messages.append(
@@ -297,12 +300,14 @@ class RagAgent:
                             "content": function_response,
                         }
                     )
+                    if verbose:
+                        loguru.logger.debug(f'Added tool call result to the conversation...')
 
             # Get the final result after processing
             get_searching_response = self.generate_response(call_google_messages,
-                                                            temperature=0.1,  
+                                                            temperature=0.3,  
                                                             ac=False,
-                                                            tools=True,
+                                                            tools=False,
                                                             stream=False)
             self.query_answers.append(get_searching_response.choices[0].message.content)
         return self.query_answers
