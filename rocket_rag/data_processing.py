@@ -182,6 +182,9 @@ def construct_dataset(filenames: List[str]) -> Tuple[np.ndarray, np.ndarray]:
     
     return np.array(TS), np.array(labels)
 
+def construct_refined_dataset(filenames: List[str]):
+    """ Construct refined dataset from a given filename list """
+
 def main():
     """Main function"""
 
