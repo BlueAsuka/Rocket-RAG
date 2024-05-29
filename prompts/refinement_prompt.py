@@ -10,7 +10,7 @@ Refinement mapping:
 5. backlash2 => Fault in backlash
 6. lacklubrication1, lacklubrication2 => Fault in lacklubrication
 Try to make a new list to replace the original list by the refined labels.
-Output the refined statement in JSON format.
+Output the refined statement in JSON FORMAT.
 EXAMPLE:
 ['lacklubrication1_20_5_4'] => 
 {
@@ -28,4 +28,7 @@ EXAMPLE:
 """
 
 user_prompt = """
+The raw fault type is {ft},
+The degradation level is {dl},
+Please try to refined the fault type as mentioned in the REFINEMENTS section.
 """
