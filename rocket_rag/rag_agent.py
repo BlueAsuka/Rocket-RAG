@@ -184,8 +184,7 @@ class RagAgent:
             {"role": "system", "content": sys_prompt},  
             {"role": "user", "content": user_prompt}
         ]
-        for p in refinement_prompt:
-            self.memory.append(p)
+        self.memory += refinement_prompt
             
         response = self.generate_response(self.memory, temperature=0.1, ac=False,  json=True,stream=False)
         refined_json_str = response.choices[0].message.content
@@ -203,23 +202,27 @@ class RagAgent:
         result = pattern.sub('', query)
         return result.strip()
     
-    def generate_multi_queries(self, num_queries: int=5) -> str:
+    def generate_multi_queries(self, num_queries: int=5, refined: bool=True) -> str:
         """ Generate a fault diagnosis statement from the given prompts.
         
         Args:
             num_queries (int, optional): The number of queries to generate. Defaults to 5.
+            refined (bool, optional): Whether to use the refined fault diagnosis statement. Defaults to True.
         
         Returns:
             str: The generated fault diagnosis statement.
         """
         
-        if self.fault_diagnosis_json is None:
+        if self.fault_diagnosis_json is None or self.refined_diagnosis_json is None:
             raise ValueError("Please run the generate_fault_diagnosis_statement method to get the fault diagnosis statement first.")
         
         if not isinstance(self.fault_diagnosis_json, dict):
             raise ValueError("The fault diagnosis statement is not a JSON object.")
         
-        fault_type = self.fault_diagnosis_json['fault_type']
+        if not isinstance(self.refined_diagnosis_json, dict):
+            raise ValueError("The refined diagnosis statement is not a JSON object.")
+        
+        fault_type = self.refined_diagnosis_json['refinement'] if refined else self.fault_diagnosis_json['fault_type']
         fault_description = self.fault_diagnosis_json['description']
         sys_prompt = multi_queries_gen_prompt.sys_prompt
         user_prompt = multi_queries_gen_prompt.user_prompt.format(fault_type=fault_type, 
@@ -257,7 +260,7 @@ class RagAgent:
             ]
 
             # Whether to store the call_google_messages and searching result in the memory is still under discussion.
-            # self.memory += call_google_messages
+            self.memory += call_google_messages
 
             call_google_response = self.generate_response(call_google_messages, 
                                                           temperature=0.1, 
