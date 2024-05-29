@@ -8,11 +8,12 @@ The format for the file is:
 ## SYSTEM INFORMATION
 fault type:
 fault level:
+fault refinement:
 fault description:
 
 ## SEARCH QUERY
 
-## SEARCH DIAGNOSIS
+## SEARCH RESULTS
 
 ## RECOMMENDATIONS 
 """
@@ -20,6 +21,7 @@ fault description:
 user_prompt = """
 Please parse a markdown file with following texts:
 fault: {fault_text}
+refinement: {refine_text}
 query: {query_text}
 answer: {answer_text}
 rec: {rec_text}
