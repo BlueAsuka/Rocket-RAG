@@ -12,18 +12,20 @@ Refinement mapping:
 Try to make a new list to replace the original list by the refined labels.
 Output the refined statement in JSON FORMAT.
 EXAMPLE:
-['lacklubrication1_20_5_4'] => 
+fault type: lackLubrication,
+degradation level: 1 => 
 {
     "fault_type": "lackLubrication",
     "degradation_level": 1,
-    "refinement_result": "Fault in lacklubrication",
+    "refinement": "Fault in lacklubrication",
 }
 
-['backlash2_20_10_2', 'lackLubrication1_20_5_5', 'lackLubrication1_20_9_3', 'lackLubrication1_20_2_3', 'backlash2_20_2_4'] =>
+fault type: backlash,
+degradation level: 2 =>
 {
     "fault_type": "backlash",
     "degradation_level": 2,
-    "refinement_result": "Fault in backlash",
+    "refinement": "Fault in backlash",
 }
 """
 
