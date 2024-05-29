@@ -22,7 +22,7 @@ class Tools():
     def __init__(self) -> None:
 
         self.available_tools = None
-        self.tools = [
+        self.info = [
         {
             "type": "function",
             "function": {
@@ -39,7 +39,28 @@ class Tools():
                     "required": ["query"],
                 },
             },
-        }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "save_to_file",
+                "description": "Save the results to a file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_name": {
+                            "type": "string",
+                            "description": "The name of the file to save the results to",
+                        },
+                        "contents": {
+                            "type": "string",
+                            "description": "The contents to save to the file",
+                        }    
+                    },
+                    "required": ["file_name", "contents"],
+                },
+            },
+        },    
     ]
 
     def call_google(self, query: str, **kwargs):
@@ -61,6 +82,17 @@ class Tools():
         res_items = res["items"]
         res_snippets = [r['snippet'] for r in res_items]
         return str(res_snippets)
+    
+    def save_to_file(self, file_name: str, contents: str):
+        """ Save the results to a file
+        
+        Args:
+            file_name (str): The name of the file to save the results to
+            contents (str): The contents to save to the file
+        """
+        
+        with open(file_name, "w") as f:
+            f.write(contents)
     
     def get_available_tools(self):
         """ Get the tools available for GPT """
