@@ -312,11 +312,13 @@ class RagAgent:
             self.query_answers.append(get_searching_response.choices[0].message.content)
         return self.query_answers
     
-    async def gather_query_answers(self, num_children: int=3, verbose: bool=False):
+    async def gather_query_answers(self, num_children: int=3, combined: bool=False, verbose: bool=False):
         """ Gather the query answers from the Google search API. 
         
         Args:
             num_children (int): The number of children to be generated. Defaults to 3.
+            combined (bool): The flags to assign the text summarization. Defaults to False, 
+                                but when the agent starts combining recursively, set the flag to True to disable the reassignment.
             verbose (bool): Whether to print the progress. Defaults to False.
 
 
@@ -327,14 +329,18 @@ class RagAgent:
         if not self.query_answers:
             raise ValueError('No answer is needed to be combined.')
         
+        # Initialize text summarization the for recursive calling
+        if not combined:
+            self.text_summarization = self.query_answers
+        
         # Get the system prompt for the text summarization
         text_summarization_sys_prompt = text_summarization_prompt.sys_prompt
 
         # Parse the prompt message for each node including several answers 
         node_batch_prompts = []
-        for idx in range(0, len(self.query_answers), num_children):
+        for idx in range(0, len(self.text_summarization), num_children):
             # only looks at num_children (in default 3) answers at once
-            node_batch = self.query_answers[idx: idx+num_children]
+            node_batch = self.text_summarization[idx: idx+num_children]
             node_batch_text = "\n\n".join([node for node in node_batch])
             # Parse the prompt for summerization with given answers
             text_summarization_user_prompt = text_summarization_prompt.user_prompt.format(text=node_batch_text)
@@ -345,7 +351,8 @@ class RagAgent:
             node_batch_prompts.append(temp_prompt)
         
         # Use async mode to generate the summerization 
-        tasks = [self.generate_response(prompt=p, temperature=0.3, ac=True) for p in node_batch_prompts]
+        loguru.logger.info(f'Start to generate the summerization for {len(node_batch_prompts)} nodes...')
+        tasks = [self.generate_response(prompts=p, temperature=0.3, ac=True) for p in node_batch_prompts]
         combined_responses = await asyncio.gather(*tasks)
         self.text_summarization = [r.choices[0].message.content for r in combined_responses]
 
@@ -356,13 +363,13 @@ class RagAgent:
             loguru.logger.info(f"Combined into {len(self.text_summarization)} responses, keep combining")
         if verbose:
             loguru.logger.info(self.text_summarization)
-        return await self.gather_query_answers()
+        # If the results has been combined, set the combined flag to True to disable to reassignment of the text_summarization
+        return await self.gather_query_answers(combined=True, verbose=verbose)
 
-    def parse_output_contents(self, file_name: str, show_refinement:bool=True):
+    def parse_output_contents(self, show_refinement:bool=True):
         """ Parse the output file to form and store the report for decision support.
 
         Args:
-            output_file (str): The output file path.
             show_refinement (bool): Whether to show the refinement diagnosis result. Defaults to True.
         """
 
@@ -392,6 +399,7 @@ class RagAgent:
                                                                                rec_text=rec_text)},
         ]
         
+        loguru.logger.debug("Parsing the output file with provided format...")
         response = self.generate_response(prompts=parse_output_messages, temperature=0.1)
         self.output_contents = response.response.choices[0].message.content
         return self.output_contents
@@ -405,7 +413,7 @@ class RagAgent:
         
         # Parse the output path
         dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-        file_path = os.path.join(LOG_DIR, (file_name + dt + ".md"))
+        file_path = os.path.join(LOG_DIR, (file_name + '-' + dt + ".md"))
         
         if not self.output_contents:
             raise ValueError("No output contents to save")
@@ -421,3 +429,8 @@ class RagAgent:
         # Check whether the file is parsed and stored successfully
         if os.path.exists(file_path):
             loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
+
+    def run(self):
+        """ Run the agent. """
+        
+        pass
