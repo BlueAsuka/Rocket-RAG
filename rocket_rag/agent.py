@@ -430,13 +430,13 @@ class RagAgent:
         if os.path.exists(file_path):
             loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
 
-    def run(self, ts_file: str, output_flle: str, verbose: bool=True):
+    def run(self, ts_file: str, output_flle: str, verbose: bool=False):
         """ Run the agent. 
 
         Args:
             ts_file (str): The input file name that indicate the time series data.
             output_flle (str): The output file name that contains the diagnosis results with maintenance suggestions.
-            verbose (bool, optional): Whether to print the output. Defaults to True.
+            verbose (bool, optional): Whether to print the intermedium output. Defaults to True.
             
         Returns:
             str: The output contents.
@@ -480,7 +480,7 @@ class RagAgent:
             print(self.output_contents)
         
         loguru.logger.debug("Saving the output...")
-        self.save_output_contents(ts_file)
+        self.save_output_contents(output_flle)
         
         loguru.logger.info("The agent finish the analysis.")
 
