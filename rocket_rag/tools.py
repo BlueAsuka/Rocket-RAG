@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 
 
 CONFIG_DIR = "../config"
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "configs.json"
 with open(os.path.join(CONFIG_DIR, CONFIG_FILE), "r") as f:
     config = json.load(f)
 
