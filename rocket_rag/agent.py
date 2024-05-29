@@ -430,7 +430,60 @@ class RagAgent:
         if os.path.exists(file_path):
             loguru.logger.info(f"File {file_name} is parsed and stored successfully.")
 
-    def run(self):
-        """ Run the agent. """
+    def run(self, ts_file: str, output_flle: str, verbose: bool=True):
+        """ Run the agent. 
+
+        Args:
+            ts_file (str): The input file name that indicate the time series data.
+            output_flle (str): The output file name that contains the diagnosis results with maintenance suggestions.
+            verbose (bool, optional): Whether to print the output. Defaults to True.
+            
+        Returns:
+            str: The output contents.
+        """
         
-        pass
+        loguru.logger.debug("Start running the agent...")
+
+        loguru.logger.debug("Computing the rocket features...")
+        rocket_feature = self.get_rocket_feature(ts_file)
+        if verbose:
+            print(f'Rocket feature shape: {rocket_feature.shape}')
+
+        loguru.logger.debug("Computing the fault prediction...")
+        fault_prediction, score = self.get_fault_prediction()
+        if verbose:
+            print(f'Fault prediction: {fault_prediction}, Score: {score}')
+
+        loguru.logger.debug(f'Generating te fault diagnosis statement...')
+        self.generate_fault_diagnosis_statement()
+        if verbose:
+            print(self.fault_diagnosis_json)
+
+        loguru.logger.debug("Refining the diagnosis...")
+        self.refine_fault_diagnosis_statement()
+        if verbose:
+            print(self.refined_diagnosis_json)
+        
+        loguru.logger.debug("Generating the query...")
+        self.generate_multi_queries()
+        if verbose:
+            print(self.generated_queries)
+
+        loguru.logger.debug("Using the tool for searching queries...")
+        self.call_google_search()
+        if verbose:
+            print(self.query_answers)
+        
+        loguru.logger.debug("Parsing the output...")
+        self.parse_output_contents()
+        if verbose:
+            print(self.output_contents)
+        
+        loguru.logger.debug("Saving the output...")
+        self.save_output_contents(ts_file)
+        
+        loguru.logger.info("The agent finish the analysis.")
+
+
+if __name__ == "__main__":
+    pass
