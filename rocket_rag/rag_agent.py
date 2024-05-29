@@ -10,13 +10,14 @@ from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
 from tqdm.auto import tqdm
 
-from rocket_rag.prompts import parse_output_prompt
+from prompts import parse_output_prompt
 from utils import fit_transform
 from node_indexing import NodeIndexer
 from vector_store import VectorStore
 from tools import Tools
 from prompts import (fault_diagnosis_prompt, 
                      multi_queries_gen_prompt, 
+                     refinement_prompt,
                      tool_usage_prompt,
                      text_summarization_prompt,
                      parse_output_prompt)
@@ -45,6 +46,7 @@ class RagAgent:
 
         # The following attributes are used to store the intermedium results of the RAG agent.
         self.fault_diagnosis_json: Dict[str, str] = None
+        self.refined_diagnosis_json: Dict[str, str] = None
         self.generated_queries: List[str] = None
         self.query_answers: List[str] = None
         self.text_summarization: List[str] = None
@@ -125,7 +127,7 @@ class RagAgent:
                 messages=prompts,
                 response_format=response_format,
                 temperature=temperature,
-                tools=self.tools.tools,
+                tools=self.tools.info,
                 stream=stream
             )
         except OpenAIError as e:
@@ -174,8 +176,23 @@ class RagAgent:
         if self.fault_diagnosis_json is None:
             raise ValueError("Please run the generate_fault_diagnosis_statement method to get the fault diagnosis statement first.")
         
-        pass
-    
+        sys_prompt = refinement_prompt.sys_promot
+        user_prompt = refinement_prompt.user_prompt.format(ft=self.fault_diagnosis_json['fault_type'],
+                                                           dl=self.fault_diagnosis_json['degradation_level'])
+        
+        refinement_prompt = [
+            {"role": "system", "content": sys_prompt},  
+            {"role": "user", "content": user_prompt}
+        ]
+        for p in refinement_prompt:
+            self.memory.append(p)
+            
+        response = self.generate_response(self.memory, temperature=0.1, ac=False,  json=True,stream=False)
+        refined_json_str = response.choices[0].message.content
+        self.memory.append({"role": "assistant", "content": refined_json_str})
+        self.refined_diagnosis_json = json.loads(refined_json_str)
+        return self.refined_diagnosis_json
+        
     def formalize_query(query: str):
         """Preprocess the query for the vector store query
         
