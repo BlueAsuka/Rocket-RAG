@@ -29,10 +29,10 @@ diagnosis_output = """
 You will receive a single or a list of fault predictions. 
 If you receieve a list of results, please FOCUS ON the first item in the list and use this value for parsing the statement.
 FORMAT_OUTPUT:
-Based on the new refined labels list, try to summarize all possible faults of the system, and give description based on information provided in context.
 Output a statement in JSON FORMAT:
 
 EXAMPLE:
+[lackLubrication1_20_5_5] =>
 {
     "fault_type": "lackLubrication",
     "degradation_level": 1,
