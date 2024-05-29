@@ -400,8 +400,8 @@ class RagAgent:
         ]
         
         loguru.logger.debug("Parsing the output file with provided format...")
-        response = self.generate_response(prompts=parse_output_messages, temperature=0.1)
-        self.output_contents = response.response.choices[0].message.content
+        response = self.generate_response(prompts=parse_output_messages, temperature=0.1, tools=False)
+        self.output_contents = response.choices[0].message.content
         return self.output_contents
     
     def save_output_contents(self, file_name: str):
@@ -411,13 +411,13 @@ class RagAgent:
             file_name (str): The output file name.
         """
         
-        # Parse the output path
-        dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-        file_path = os.path.join(LOG_DIR, (file_name + '-' + dt + ".md"))
-        
         if not self.output_contents:
             raise ValueError("No output contents to save")
         
+        # Parse the output path
+        dt = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+        file_path = os.path.join(LOG_DIR, (file_name + '-' + dt + ".md"))
+
         # Write the output contents to the output file        
         try:
             with open(file_path, "w", encoding='utf-8') as f:

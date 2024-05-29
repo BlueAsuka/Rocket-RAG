@@ -1,6 +1,6 @@
 sys_prompt = """
 You are familar with the MARKDOWN syntax and expression.
-You need to parse a MARKDOWN file and store it in a specific directory given by user.
+You need to parse a MARKDOWN file with provided information.
 The format for the file is:
 
 # FAULT DIAGNOSIS REPORT
