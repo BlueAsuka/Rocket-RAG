@@ -63,7 +63,7 @@ class Tools():
         },    
     ]
 
-    def call_google(self, query: str, **kwargs):
+    def call_google(query: str, **kwargs):
         """ Call the google chrome for searching online 
         
         Args:
@@ -83,7 +83,7 @@ class Tools():
         res_snippets = [r['snippet'] for r in res_items]
         return str(res_snippets)
     
-    def save_to_file(self, file_name: str, contents: str):
+    def save_to_file(file_name: str, contents: str):
         """ Save the results to a file
         
         Args:
@@ -97,7 +97,7 @@ class Tools():
     def get_available_tools(self):
         """ Get the tools available for GPT """
 
-        if len(self.tools) == 0:
+        if len(self.info) == 0:
             return {"": None}
         self.available_tools = {n:f for n, f in Tools.__dict__.items() if not n.startswith("_") and callable(f)}
         return self.available_tools
