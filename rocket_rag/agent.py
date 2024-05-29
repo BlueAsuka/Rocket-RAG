@@ -38,7 +38,7 @@ class RagAgent:
         self.ni = NodeIndexer()
         self.nodes = self.ni.load_node_indexing(vs_dir)
         self.vs.add(self.nodes)
-        assert len(self.nodes) == 0, f'No docs in the vector store!'
+        # assert len(self.nodes) == 0, f'No docs in the vector store!'
         self.query_mode = ""
         self.ts_rocket = None
         self.query_res = None
@@ -55,6 +55,8 @@ class RagAgent:
         self.tools = Tools() # The tools for calling 
         
         self._init_openai_client() # Initialize the OpenAI client
+        
+        loguru.logger.info(f'RAG agent initialized.')
 
     def _init_openai_client(self):
         """ Initialize the OpenAI client. """
@@ -62,7 +64,7 @@ class RagAgent:
         if os.environ.get('OPENAI_API_KEY') or config["openai_api_key"]:
             self.openai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY', config["openai_api_key"]))
             self.async_openai_client = AsyncClient(api_key=os.environ.get('OPENAI_API_KEY', config["openai_api_key"]))
-            loguru.logger.info("OpenAI API key found. Initialized OpenAI client.")
+            loguru.logger.info("OpenAI API key found. OpenAI client Initialized.")
         else:
             raise ValueError("OpenAI API key not found. \
                               Please set the OPENAI_API_KEY environment variable in variable env or config file.")
@@ -100,11 +102,12 @@ class RagAgent:
         return self.query_res
     
     def generate_response(self, 
-                          prompts:List[Dict[str, str]], 
-                          temperature:float=0.7, 
-                          ac:bool=False, 
-                          json:bool=False,
-                          stream:bool=False):
+                          prompts: List[Dict[str, str]], 
+                          temperature: float=0.7, 
+                          ac: bool=False, 
+                          json: bool=False,
+                          tools: bool=False,
+                          stream: bool=False):
         """ Generate a response from the OpenAI API. 
         
         Args:
@@ -112,6 +115,7 @@ class RagAgent:
             temperature (float, optional): The temperature to use for the generation. Defaults to 0.7.
             ac (bool, optional): Whether to use async mode or not. Defaults to False.
             json (bool, optional): Whether to return the response as JSON or not. Defaults to False.
+            tool_choice (bool, optional): Whether force the model to use external tools. Defaults to False.
             stream (bool, optional): Whether to stream the response or not. Defaults to False.
         
         Returns:
@@ -120,14 +124,16 @@ class RagAgent:
         
         client = self.openai_client if not ac else self.async_openai_client
         response_format = "json_object" if json else "text"
+        tool_choice = "required" if tools else "none"
         
         try:
             response = client.chat.completions.create(
                 model=config['gpt_model'],
                 messages=prompts,
-                response_format=response_format,
+                response_format={ "type": response_format },
                 temperature=temperature,
                 tools=self.tools.info,
+                tool_choice=tool_choice,
                 stream=stream
             )
         except OpenAIError as e:
@@ -149,8 +155,8 @@ class RagAgent:
         
         idx, vals = self.query_res
         sys_prompt = fault_diagnosis_prompt.sys_prompt
-        user_prompt = fault_diagnosis_prompt.ridge_prompt.format(res=idx, score=vals) if self.query_mode == 'ridge' else \
-                      fault_diagnosis_prompt.knn_prompt.format(res=idx, distances=vals)
+        user_prompt = fault_diagnosis_prompt.ridge_prompt.format(res=idx, score=str(vals)) if self.query_mode == 'ridge' else \
+                      fault_diagnosis_prompt.knn_prompt.format(res=idx, distances=str(vals))
  
         messages = [
             {"role": "system", "content": sys_prompt},
@@ -158,7 +164,7 @@ class RagAgent:
         ]
         self.memory = messages
         
-        response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
+        response = self.generate_response(messages, temperature=0.1, ac=False, json=True, stream=False)
         resp_json_str = response.choices[0].message.content
         self.memory.append({"role": "assistant", "content": resp_json_str})
         self.fault_diagnosis_json = json.loads(resp_json_str)
@@ -235,7 +241,7 @@ class RagAgent:
         ]
         self.memory += messages
         
-        response = self.generate_response(messages, temperature=0.1, ac=False, stream=False)
+        response = self.generate_response(messages, temperature=0.4)
         multi_queries_gen = response.choices[0].message.content
         self.generated_queries = [self.formalize_query(query) for query in multi_queries_gen.split('\n')]
         return self.generated_queries
