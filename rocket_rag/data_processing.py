@@ -38,11 +38,15 @@ from rocket_rag.utils import *
 RAW_DATA_DIR = '../data/raw/'
 INSTANCES_DIR = '../data/instances/'
 INFERENCE_DIR = '../data/inference/'
+RE_INSTANCES_DIR = '../data/re_instances/'
+RE_INFERENCE_DIR = '../data/re_inference/'
 STATES = ['normal', 
           'backlash1', 'backlash2',
           'lackLubrication1', 'lackLubrication2',
           'spalling1', 'spalling2', 'spalling3', 'spalling4',
           'spalling5', 'spalling6', 'spalling7', 'spalling8']
+RE_STATES = ['no_obvious_fault', 'light_spalling', 'medium_spalling', 
+             'heavy_spalling', 'backlash', 'lack_lubrication']
 LOADS= ['20kg', '40kg', '-40kg']
 INFERENCE_RATE = 0.2 # the percentage of inference instances
 REPEAT = 5 # repeat 5 times in each test
@@ -70,12 +74,24 @@ def init_dirs():
             if os.path.exists(cur_inference_dir):
                 shutil.rmtree(cur_inference_dir)
             os.makedirs(cur_inference_dir)
+        
+        for re_state in RE_STATES:
+            cur_re_instances_dir = os.path.join(RE_INSTANCES_DIR, f'{load}/{re_state}')
+            cur_re_inference_dir = os.path.join(RE_INFERENCE_DIR, f'{load}/{re_state}')
+            # If a folder already existed, delete firstly then make a new dir
+            if os.path.exists(cur_re_instances_dir):
+                shutil.rmtree(cur_re_instances_dir)
+            os.makedirs(cur_re_instances_dir)
+            if os.path.exists(cur_re_inference_dir):
+                shutil.rmtree(cur_re_inference_dir)
+            os.makedirs(cur_re_inference_dir)
 
             # Show creation processes
             if VERBO:
                 loguru.logger.info(f'Directory: {cur_instances_dir} INITIALIZED.')
                 loguru.logger.info(f'Directory: {cur_inference_dir} INITIALIZED.')
-
+                loguru.logger.info(f'Directory: {cur_re_instances_dir} INITIALIZED.')
+                loguru.logger.info(f'Directory: {cur_re_inference_dir} INITIALIZED.')
 
 def construct_state_load_instances(state: str, load: str, dataframe: pd.DataFrame):
     """Construct instances for one state under a specific load"""
@@ -136,6 +152,7 @@ def construct_instances_set():
 
 def construct_inference_set():
     """Move ramdonly selected samples in instances set to inference set to construct inference set"""
+    
     random.seed(42) # For reproduciable
 
     for load in LOADS:
@@ -164,6 +181,7 @@ def construct_dataset(filenames: List[str]) -> Tuple[np.ndarray, np.ndarray]:
     Return:
         A tuple includes both time series and lables in numpy array
     """
+    
     TS, labels = [], []
     for f in tqdm(filenames):
         if os.path.exists(f):
@@ -182,8 +200,52 @@ def construct_dataset(filenames: List[str]) -> Tuple[np.ndarray, np.ndarray]:
     
     return np.array(TS), np.array(labels)
 
-def construct_refined_dataset(filenames: List[str]):
-    """ Construct refined dataset from a given filename list """
+def get_refined_state(state):
+    """ Get the refinement label from the original label """
+    
+    if state == 'backlash2':
+        return 'backlash'
+    elif state == 'lackLubrication1' or state == 'lackLubrication2':
+        return 'lack_lubrication'
+    elif state == 'spalling7' or state == 'spalling8':
+        return 'heavy_spalling'
+    elif state == 'spalling5' or state == 'spalling6':
+        return 'medium_spalling'
+    elif state == 'spalling3' or state == 'spalling4':
+        return 'light_spalling'
+    else:
+        return 'no_obvious_fault'
+    
+def get_instance_num(load: str, instance: bool=True):
+    """ Get the number of instance samples for a given load """
+    
+    file_list = []
+    dataset_dir = INSTANCES_DIR if instance else INFERENCE_DIR
+    for state in STATES:
+        file_list += os.listdir(os.path.join(dataset_dir, f"{load}/{state}"))
+    return len(file_list)
+    
+def construct_refined_set(instances: bool=True):
+    """ Construct refined dataset from a given filename list 
+    
+    Args:
+        instances: whether to reconstruct instances set or inference set
+    """
+    
+    random.seed(42) # For reproduciable
+    src_path = INSTANCES_DIR if instances else INFERENCE_DIR
+    dst_path = RE_INSTANCES_DIR if instances else RE_INFERENCE_DIR
+    for load in LOADS:
+        for state in STATES:
+            # Source and destination dir
+            src = os.path.join(src_path, f"{load}/{state}")
+            re_state = get_refined_state(state)
+            dst = os.path.join(dst_path, f"{load}/{re_state}")
+            for file in os.listdir(src):
+                rand_suffix = random.randint(1, get_instance_num(load, instances)+1)
+                shutil.copy(os.path.join(src, file), os.path.join(dst, f'{re_state}_{rand_suffix}.csv'))
+            if VERBO:
+                loguru.logger.info(f"Constructed {len(os.listdir(src))} refined instances samples for {re_state} under {load}.")
 
 def main():
     """Main function"""
@@ -194,6 +256,10 @@ def main():
     construct_instances_set()
     print(Fore.YELLOW + "Constructing inference set..." + Fore.RESET)
     construct_inference_set()
+    print(Fore.YELLOW + "Constructing refined instances set..." + Fore.RESET)
+    construct_refined_set(instances=True)
+    print(Fore.YELLOW + "Constructing refined inference set..." + Fore.RESET)
+    construct_refined_set(instances=False)
     print(Fore.YELLOW + "Done!" + Fore.RESET)
 
 

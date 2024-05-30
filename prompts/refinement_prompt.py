@@ -6,7 +6,7 @@ Refinement mapping:
 1. normal, spalling1, spalling2, backlash1 => No obvious fault detection
 2. spalling3, spalling4 => Fault in light spalling
 3. spalling5, spalling6 => Fault in medium spalling
-4. spalling7, spalling8 => Fault in obvious spalling
+4. spalling7, spalling8 => Fault in heavy spalling
 5. backlash2 => Fault in backlash
 6. lacklubrication1, lacklubrication2 => Fault in lacklubrication
 Try to make a new list to replace the original list by the refined labels.
