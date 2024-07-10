@@ -12,8 +12,8 @@ Predictive analytics with machine learning approaches has widely penetrated and 
 The ROCKET (Romdom Convolution Kernal Encoder) model is used to extract the time series features, and the top-k similar retrieved results are used to obtain the label of the state of the given signal. The GPT model can combine the text with the prediction to generate the docuementation based on contextual information for some downstream tasks such as decision support for assest maintenance.
 
 ## Results
-RAG vs. InceptionTime
-![](assets/retrieve_results.png)
+RAG + retriever vs. InceptionTime (trained with 100 epoches)
+![](assets/retrieve_results.PNG)
 
 An example of the generated text with the fault $spalling 7$ (A full documentation can be found at the directory `logs`)
 ![](assets/generate_documentation.png){width=100%}
