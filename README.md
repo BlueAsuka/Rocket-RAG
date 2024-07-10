@@ -13,7 +13,7 @@ The ROCKET (Romdom Convolution Kernal Encoder) model is used to extract the time
 
 ## Results
 RAG vs. InceptionTime
-![[assets/retrieve_results.png]]
+![](assets/retrieve_results.png)
 
 An example of the generated text with the fault $spalling 7$ (A full documentation can be found at the directory `logs`)
 ![](assets/generate_documentation.png){width=100%}
