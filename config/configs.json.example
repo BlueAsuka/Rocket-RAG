@@ -2,5 +2,8 @@
     "google_api_key": "<YOUR GOOGLE API KEY>",
     "google_cse_id": "<YOUR GOOGLE CUSTOM SEARCH ENGINE>",
     "openai_api_key": "<YOUR OPENAI API KEY>",
-    "gpt_model": "<GPT MODEL CARD>"
+    "gpt_model": "<GPT MODEL CARD>",
+    "cur_smooth_ws": 15,
+    "pos_smooth_ws": 20,
+    "query_mode": ["knn", "ridge"]
 }
