@@ -6,6 +6,11 @@ The compiler is Vite, a modern build tool that is faster than webpack.
 
 ## How to run the project
 
+### Linter
+
+Run `npm run lint` to run the linter, this is required as if the linter fails the build will fail as well.
+Note: This step is not required if you are using the docker container provided and are not making any changes to the code.
+
 ### Development
 
 1. Clone the project
@@ -22,6 +27,10 @@ The compiler is Vite, a modern build tool that is faster than webpack.
 
 A small flask API is used to serve the data to the UI, it serves as an example of how to use a backend with a react frontend.
 The conversations are not stored in a database, they are stored in memory and are lost when the server is restarted.
+
+The API can be started by running `python ./Main.py` in the `FlaskServer` directory.
+
+To implement another api, you can reuse directly the same endpoints and it will integrate directly with the UI.
 
 ## Environment variables
 

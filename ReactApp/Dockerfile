@@ -1,5 +1,5 @@
-# Stage 1: Build the app
-FROM node:14 as build
+# Stage 1: Build the app with vite 
+FROM node:20 as build
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm install
 # Copy the rest of the app source code to the working directory
 COPY . .
 
-# Build the app
+# Build the app with Vite
 RUN npm run build
 
 # Stage 2: Serve the app using Nginx
