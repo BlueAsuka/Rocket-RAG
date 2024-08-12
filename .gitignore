@@ -1,3 +1,4 @@
+config/configs.json
 data/inference/
 data/instances/
 *.pyc
