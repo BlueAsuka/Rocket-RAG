@@ -1,4 +1,3 @@
 data/inference/
 data/instances/
 *.pyc
-*.json
