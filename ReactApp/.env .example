@@ -1,3 +1,0 @@
-VITE_BACKEND_URL="http://localhost:5000"
-VITE_IMG_LOGO="dist/GPT_Tator.jfif"
-VITE_IMG_LOGO_ALT="GPT Tator Logo"
