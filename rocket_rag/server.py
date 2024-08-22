@@ -75,6 +75,9 @@ def send_message():
         {"role": "user", "content": message["text"]}
     ]
     
+    # Here you can get the file that has been added to the conversation 
+    # The attachment is in conversations[conversation_id]["attachments"]
+    # And the attachment is stored in the "./uploads/" folder
     if conversation_id in conversations:
         conversations[conversation_id]["messages"].append(message)
         if debug:
@@ -108,11 +111,6 @@ def send_attachment(conversation_id):
 
 
     return 'File uploaded', 200
-
-  
-
-    # else:
-    #     return jsonify({"error": "Conversation not found", "status":404}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
