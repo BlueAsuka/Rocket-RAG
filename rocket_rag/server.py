@@ -1,20 +1,16 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import uuid
 from datetime import datetime
 from agent import RagAgent
 
 app = Flask(__name__)
-# Handle CORS
+# Configure CORS to allow the specific headers including 'X-Requested-With'
+CORS(app)
 
 placeholder_response_message = "This is a placeholder response message. It is here to simulate a response from a chatbot. It is not a real response."
 rocket_rag = RagAgent('../store/nodes_20kg.pkl')
-
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, DELETE')
-    return response
+debug = False
 
 # In-memory data storage for conversations
 conversations = {}
@@ -81,29 +77,42 @@ def send_message():
     
     if conversation_id in conversations:
         conversations[conversation_id]["messages"].append(message)
-        gpt_response = rocket_rag.generate_response(prompts=message_text)
-        print(gpt_response)
-        response_str = gpt_response.choices[0].message.content
-        print(response_str)
+        if debug:
+            response_str = placeholder_response_message
+        else:
+            gpt_response = rocket_rag.generate_response(prompts=message_text)
+            print(gpt_response)
+            response_str = gpt_response.choices[0].message.content
+            print(response_str)
         conversations[conversation_id]["messages"].append({ "id": generate_id(), "text": response_str, "sender": "bot" })
         return conversations[conversation_id]
     else:
         return jsonify({"message": "Conversation not found", "status":404}), 404
 
 # Route to send an attachment to a conversation
-@app.route('/conversationAttachment', methods=['POST'])
-def send_attachment():
-    data = request.json
-    conversation_id = data["header"]["id"]
-    attachment = data["attachment"]
-    attachment["id"] = generate_id()  # Generate a unique ID for the attachment
-    
+@app.route('/conversationAttachment/<string:conversation_id>', methods=['POST'])
+def send_attachment(conversation_id):
+
+    file = request.files.get('file')  # Use .get() to avoid KeyError
+    if not file:
+        return 'No file part', 400
+
+    file.filename = file.filename + '_' + conversation_id
     if conversation_id in conversations:
-        conversations[conversation_id]["attachments"].append(attachment)
-        return jsonify({"message": "Attachment sent" , "status":200}), 200
-    else:
-        return jsonify({"error": "Conversation not found", "status":404}), 404
+         conversations[conversation_id]["attachments"].append(file.filename)   
+
+    # Process the file
+    print(file.filename)
+    # Save the file
+    file.save('./uploads/' + file.filename)
+
+
+    return 'File uploaded', 200
+
+  
+
+    # else:
+    #     return jsonify({"error": "Conversation not found", "status":404}), 404
 
 if __name__ == '__main__':
-    result = rocket_rag.get_fault_prediction()
     app.run(debug=True)
