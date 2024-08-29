@@ -1,0 +1,7 @@
+services:
+  gpt_tator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:80

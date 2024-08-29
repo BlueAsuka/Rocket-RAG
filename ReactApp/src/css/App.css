@@ -1,0 +1,25 @@
+.home_layout {
+    height: 100vh;
+    display: flex;
+}
+
+.avatar {
+    position: relative;
+    width: auto;
+    height: auto;
+    border-radius: 50%;
+    margin: auto;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.conversation_delete_btn {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+    background-color: black
+}
