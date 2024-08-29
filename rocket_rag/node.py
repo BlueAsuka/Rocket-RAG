@@ -24,7 +24,7 @@ from typing import List, Dict, Any, Optional
 from typing_extensions import Self
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union
-from utils import truncate_text
+from .utils import truncate_text
 
 
 DEFAULT_TEXT_NODE_TMPL = "{metadata_str}\n\n{content}"
