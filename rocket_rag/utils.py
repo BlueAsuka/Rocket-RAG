@@ -181,3 +181,18 @@ def parse_files(main_directory: str) -> Dict[str, List[str]]:
                      if os.path.isfile(os.path.join(directory, f))]
             load_state_dict[load].extend(files)
     return load_state_dict 
+
+def truncate_text(text: str, max_length: int) -> str:
+    """
+    Truncate text to a maximum length.
+    
+    Args:
+        text: the string of the text to be truncated
+        max_length: the integer of the maximum length
+    
+    Return:
+        The truncated text
+    """
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - 3] + "..."

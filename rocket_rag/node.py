@@ -1,30 +1,38 @@
 """
-A node structure for hybrid vector search
+Different nodes for retireval: text, image and time series
+
+A time series node structure for retrieval
 The node can include sparse and dense vector
 
 Sparse vector is represented as a dictionary in the format of {indices: values},
 Dense vector is represented as a list of float
 
-The implementation is referred as the source code from LlamaIndex: 
+The implementation is referred and modified from the source code in the LlamaIndex tutorial: 
 https://github.com/run-llama/llama_index/blob/main/llama_index/schema.py
 """
 
 import json
 import uuid
+import textwrap
 import loguru
 
+from io import BytesIO
+from hashlib import sha256
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import List, Dict, Any, Optional
 from typing_extensions import Self
-import numpy as np
 from pydantic import BaseModel, Field
-
-from typing import List, Optional
+from typing import List, Optional, Union
+from utils import truncate_text
 
 
 DEFAULT_TEXT_NODE_TMPL = "{metadata_str}\n\n{content}"
 DEFAULT_METADATA_TMPL = "{key}: {value}"
+# NOTE: for pretty printing
+TRUNCATE_LENGTH = 350
+WRAP_WIDTH = 70
+ImageType = Union[str, BytesIO]
 
 
 class MetadataMode(str, Enum):
@@ -33,6 +41,15 @@ class MetadataMode(str, Enum):
     LLM = auto()
     NONE = auto()
 
+
+class ObjectType(str, Enum):
+    TEXT = auto()
+    IMAGE = auto()
+    TIMESERIES = auto()
+    # The following two types are not used in this project
+    # INDEX = auto()
+    # DOCUMENT = auto()
+    
 
 class BaseComponent(BaseModel):
     """Base component object to capture class names."""
@@ -134,14 +151,8 @@ class BaseNode(BaseComponent):
     id_: str = Field(
         default_factory=lambda: str(uuid.uuid4()), description="Unique ID of the node."
     )
-    rocket_feature: Optional[List[Any]] = Field(
-        default=None, description="Rocket feature of the node."
-    )
-    dense_embedding: Optional[List[Any]] = Field(
+    embedding: Optional[List[float]] = Field(
         default=None, description="Dense embedding of the node."
-    )
-    sparse_dict: Optional[Dict[str, List[Any]]] = Field(
-        default=None, description="Dictionary of sparse embedding of the node."
     )
 
 
@@ -192,14 +203,14 @@ class BaseNode(BaseComponent):
     def node_id(self, value: str) -> None:
         self.id_ = value
 
-    def get_rocket_feature(self) -> List[float]:
-        """Get rocket features
-
-        Error if rocket features is None    
-        """
-        if self.rocket_feature is None:
-            raise ValueError("rocket feature not set.")
-        return self.rocket_feature
+    def __str__(self) -> str:
+        source_text_truncated = truncate_text(
+            self.get_content().strip(), TRUNCATE_LENGTH
+        )
+        source_text_wrapped = textwrap.fill(
+            f"Text: {source_text_truncated}\n", width=WRAP_WIDTH
+        )
+        return f"Node ID: {self.node_id}\n{source_text_wrapped}"
 
     def get_embedding(self) -> List[float]:
         """Get dense embedding.
@@ -210,18 +221,15 @@ class BaseNode(BaseComponent):
             raise ValueError("embedding not set.")
         return self.dense_embedding
 
-    def get_sparse_dict(self) -> Dict[str, float]:
-        """Get sparse dict.
-
-        Errors if sparse dictionary is None.
-        """
-        if self.sparse_dict is None:
-            raise ValueError("sparse_dict not set.")
-        return self.sparse_dict
-
-
-class Node(BaseNode):
+class TextNode(BaseNode):
+    """
+    Node object for textual content retrieve
+    """
+    
     text: str = Field(default="", description="Text content of the node.")
+    mimetype: str = Field(
+        default="text/plain", description="MIME type of the node content."
+    )
     start_char_idx: Optional[int] = Field(
         default=None, description="Start char index of the node."
     )
@@ -251,21 +259,15 @@ class Node(BaseNode):
     def class_name(cls) -> str:
         return "TextNode"
 
-    # @root_validator
-    # def _check_hash(cls, values: dict) -> dict:
-    #     """Generate a hash to represent the node."""
-    #     text = values.get("text", "")
-    #     metadata = values.get("metadata", {})
-    #     doc_identity = str(text) + str(metadata)
-    #     values["hash"] = str(
-    #         sha256(doc_identity.encode("utf-8", "surrogatepass")).hexdigest()
-    #     )
-    #     return values
+    @property
+    def hash(self) -> str:
+        doc_identity = str(self.text) + str(self.metadata)
+        return str(sha256(doc_identity.encode("utf-8", "surrogatepass")).hexdigest())
 
-    # @classmethod
-    # def get_type(cls) -> str:
-    #     """Get Object type."""
-    #     return ObjectType.TEXT
+    @classmethod
+    def get_type(cls) -> str:
+        """Get Object type."""
+        return ObjectType.TEXT
 
     def get_content(self, metadata_mode: MetadataMode = MetadataMode.NONE) -> str:
         """Get object content."""
@@ -311,9 +313,96 @@ class Node(BaseNode):
     def get_text(self) -> str:
         return self.get_content(metadata_mode=MetadataMode.NONE)
 
+    @property
+    def node_info(self) -> Dict[str, Any]:
+        """Deprecated: Get node info."""
+        return self.get_node_info()
+
+
+class ImageNode(TextNode):
+    """Node with image."""
+
+    # TODO: store reference instead of actual image
+    # base64 encoded image str
+    image: Optional[str] = None
+    image_path: Optional[str] = None
+    image_url: Optional[str] = None
+    image_mimetype: Optional[str] = None
+    text_embedding: Optional[List[float]] = Field(
+        default=None,
+        description="Text embedding of image node, if text field is filled out",
+    )
+
+    @classmethod
+    def get_type(cls) -> str:
+        return ObjectType.IMAGE
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "ImageNode"
+
+    def resolve_image(self) -> ImageType:
+        """Resolve an image such that PIL can read it."""
+        if self.image is not None:
+            import base64
+
+            return BytesIO(base64.b64decode(self.image))
+        elif self.image_path is not None:
+            return self.image_path
+        elif self.image_url is not None:
+            # load image from URL
+            import requests
+
+            response = requests.get(self.image_url)
+            return BytesIO(response.content)
+        else:
+            raise ValueError("No image found in node.")
+
+
+class TimeSeriesNode(TextNode):
+    """Node object for time series retrieve"""
+    
+    # label: str = Field(default="", description="Label description of the time series of the node.")
+    rocket_feature: Optional[List[Any]] = Field(
+        default=None, description="Rocket feature of the node."
+    )
+    sparse_dict: Optional[Dict[str, List[Any]]] = Field(
+        default=None, description="Dictionary of sparse embedding of the node."
+    )
+
+    @classmethod
+    def get_type(cls) -> str:
+        return ObjectType.TIMESERIES
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "TSNode"
+    
+    def get_rocket_feature(self) -> List[float]:
+        """Get rocket features
+
+        Error if rocket features is None    
+        """
+        if self.rocket_feature is None:
+            raise ValueError("rocket feature not set.")
+        return self.rocket_feature
+    
+    def get_sparse_dict(self) -> Dict[str, float]:
+        """Get sparse dict.
+
+        Errors if sparse dictionary is None.
+        """
+        if self.sparse_dict is None:
+            raise ValueError("sparse_dict not set.")
+        return self.sparse_dict
+
 
 if __name__ == "__main__":
     loguru.logger.debug(f'Testing on node construction...')
-    node = Node()
-    print(node)
-    loguru.logger.info(f'Node construction successful!')
+    txt_node = TextNode()
+    img_node = ImageNode()
+    ts_node = TimeSeriesNode()
+    print(txt_node)
+    print(img_node)
+    print(ts_node)
+    loguru.logger.info(f'Nodes construction successful!')
