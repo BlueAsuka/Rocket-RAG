@@ -64,7 +64,7 @@ The reuslt will be stored at the `logs` directory after the agent is run.
 - [ ] Add more retrieval methods and techniques with consideration on both time and frequency domains, e.g., keyword sparse search, reranking
 - [ ] Add more RAG modes such as Self-RAG, Corrective-RAG and Graph-RAG e.g.
 - [ ] Reimplement the ROCKET and its variance from scratch to be independent from the Pyts package
-- [ ] Reimplement the RAG based on DSpy for lighter prompting engineering and management
+- [ ] Reimplement the RAG based on DSPy for lighter prompting engineering and management
 - [ ] Reimplement the system in a more agentic way with better reasoning and planning 
 - [ ] Support more opensource llm models e.g., llama3, chatGLM and so on
 - [ ] Support the interactive mode for the agent to interact with the user by chatting like GPT
