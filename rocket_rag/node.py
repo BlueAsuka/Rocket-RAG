@@ -15,6 +15,7 @@ import json
 import uuid
 import textwrap
 import loguru
+import numpy as np
 
 from io import BytesIO
 from hashlib import sha256
@@ -151,7 +152,7 @@ class BaseNode(BaseComponent):
     id_: str = Field(
         default_factory=lambda: str(uuid.uuid4()), description="Unique ID of the node."
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: Union[List[float], np.ndarray] = Field(
         default=None, description="Dense embedding of the node."
     )
 
