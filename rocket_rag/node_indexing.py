@@ -18,7 +18,15 @@ from rocket_rag.utils import *
 from pyts.transformation import ROCKET 
 
 
-class NodeIndexer():
+class BaseIndexer():
+    pass
+
+
+class TextNodeIndexer(BaseIndexer):
+    pass
+
+
+class TimeSeriesNodeIndexer(BaseIndexer):
     
     def indexing(self, 
                  rocket: ROCKET,
@@ -144,7 +152,7 @@ if __name__ == '__main__':
                        smooth_ws=15,
                        tolist=False) for f in ts_files])
     
-    node_indexer = NodeIndexer()
+    node_indexer = TextNodeIndexer()
     rocket = ROCKET(n_kernels=10000, kernel_sizes=([9]), random_state=42)
     nodes = node_indexer.indexing(rocket=rocket,      
                                   ts=ts,
