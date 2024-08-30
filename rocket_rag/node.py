@@ -147,13 +147,15 @@ class BaseNode(BaseComponent):
     """
 
     class Config:
-        populate_by_name = True
+        allow_population_by_field_name = True
+        # hash is computed on local field, during the validation process
+        validate_assignment = True
 
     id_: str = Field(
         default_factory=lambda: str(uuid.uuid4()), description="Unique ID of the node."
     )
-    embedding: Union[List[float], np.ndarray] = Field(
-        default=None, description="Dense embedding of the node."
+    embedding: Optional[List[float]] = Field(
+        default=None, description="Embedding of the node."
     )
 
 
@@ -177,12 +179,12 @@ class BaseNode(BaseComponent):
         default_factory=list,
         description="Metadata keys that are excluded from text for the LLM.",
     )
-    hash: str = Field(default="", description="Hash of the node content.")
+    # hash: str = Field(default="", description="Hash of the node content.")
 
-    # @classmethod
-    # @abstractmethod
-    # def get_type(cls) -> str:
-    #     """Get Object type."""
+    @classmethod
+    @abstractmethod
+    def get_type(cls) -> str:
+        """Get Object type."""
 
     @abstractmethod
     def get_content(self, metadata_mode: MetadataMode = MetadataMode.ALL) -> str:
@@ -195,6 +197,11 @@ class BaseNode(BaseComponent):
     @abstractmethod
     def set_content(self, value: Any) -> None:
         """Set the content of the node."""
+    
+    @property
+    @abstractmethod
+    def hash(self) -> str:
+        """Get hash of node."""
 
     @property
     def node_id(self) -> str:
@@ -218,9 +225,10 @@ class BaseNode(BaseComponent):
 
         Errors if embedding is None.
         """
-        if self.dense_embedding is None:
+        if self.embedding is None:
             raise ValueError("embedding not set.")
-        return self.dense_embedding
+        return self.embedding
+
 
 class TextNode(BaseNode):
     """
@@ -318,6 +326,9 @@ class TextNode(BaseNode):
     def node_info(self) -> Dict[str, Any]:
         """Deprecated: Get node info."""
         return self.get_node_info()
+
+
+Node = TextNode
 
 
 class ImageNode(TextNode):
