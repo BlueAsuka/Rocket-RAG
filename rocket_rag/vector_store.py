@@ -48,8 +48,11 @@ class BaseVectorStore():
         """Get nodes for response"""
         pass    
 
+class TextVectorStore(BaseVectorStore):
+    pass
 
-class VectorStore(BaseVectorStore):
+
+class TimeSeriesVectorStore(BaseVectorStore):
     """An updated version of above SimpleVectorStore"""
 
     stores_text: bool = True
@@ -187,7 +190,7 @@ if __name__ == "__main__":
     nodes = node_indexer.load_node_indexing(f'../store/nodes_{load}.pkl')
 
     loguru.logger.debug(f'Initializing vector store...')
-    vector_store = VectorStore()
+    vector_store = TimeSeriesVectorStore()
     vector_store.add(nodes)
     loguru.logger.info(f'Loaded nodes into the vector store.')
 
