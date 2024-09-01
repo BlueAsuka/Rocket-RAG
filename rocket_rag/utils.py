@@ -7,6 +7,8 @@ import loguru
 import pandas as pd
 import numpy as np
 
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
 from typing import List, Union, Dict
 from pyts.transformation import ROCKET
 
@@ -20,8 +22,14 @@ STATES = ['normal',
           'spalling1', 'spalling2', 'spalling3', 'spalling4',
           'spalling5', 'spalling6', 'spalling7', 'spalling8']
 LOADS= ['20kg', '40kg', '-40kg']
-SMOOTHING_PE_WINDOW_SIZE = 20
-SMOOTHING_CUR_WINDOW_SIZE = 15
+
+DEFAULT_SMOOTHING_METHOD = 'savgol_filter'
+
+MA_WINDOW_SIZE = 15
+EWA_SPAN = 10
+GAUSSIAN_SIGMA = 2
+SAVGOL_WINDOW_SIZE = 15
+SAVGOL_POLYORDER = 2
 
 
 def read_time_series_csv(filepath: str, verbo: bool=False) -> pd.DataFrame:
@@ -66,51 +74,47 @@ def extract_data_from_df(df: pd.DataFrame, field: str, verbo: bool=False) -> Lis
         loguru.logger.info(f"Extract {field} column from the dataframe.")
     return df[field].tolist()
 
-def moving_average_smoothing(ts: Union[List[float], np.ndarray], 
-                             window_size: int, 
-                             tolist: bool, 
-                             warning: bool=False) -> np.ndarray:
+def smoothing(ts_df: pd.DataFrame, field: str, method: str=DEFAULT_SMOOTHING_METHOD) -> np.ndarray:
     """
-    Smooth the time series using moving average approach
+    Smooth the time series 
 
     Args:
-        time_series: an numpy array containing the time series
-        window_size: the window size for averaging to smooth the time series 
-        tolist: whether return the array in list or warp it in np.ndarray
-        warning: the boolean to determine whether show the warning info
+        ts_df: a pandas dataframe containing the time series
+        field: a string of the field in the dataframe for smoothing
+        method: the string of the smoothing method, only support four methods:
+                Exponential Moving Average (EMA),
+                Moving Average (MA),
+                Gaussian Smoothing,
+                Savitzky-Golay Filter
     
     Return:
         The numpy array of the time series after smoothing
     """
-    if not isinstance(ts, np.ndarray):
-        if warning:
-            loguru.logger.warning(f"The input requires np.ndarray, but {type(ts)} is provided.")
-            loguru.logger.warning(f"Automatically cast {type(ts)} to np.ndarray, further type checking is recommanded.")
-        ts = np.array(ts)
+    
+    if field not in ts_df.columns:
+        loguru.logger.error(f"{field} is not included in the dataframe.")
+    
+    if method == 'ewma':
+        smoothed = ts_df[field].ewm(span=EWA_SPAN).mean().values
+    elif method == 'ma':
+        smoothed = ts_df[field].rolling(window=MA_WINDOW_SIZE).mean().values
+    elif method == 'gaussian':
+        smoothed = gaussian_filter1d(ts_df[field].values, sigma=GAUSSIAN_SIGMA)
+    elif method == 'savgol_filter':
+        smoothed = savgol_filter(ts_df[field].values, window_length=SAVGOL_WINDOW_SIZE, polyorder=SAVGOL_POLYORDER)
+    else:
+        loguru.logger.warning(f"Smoothing method {method} is not supported, use {DEFAULT_SMOOTHING_METHOD} instead.")
+        smoothed = smoothing(ts_df, field, warning=True, method=DEFAULT_SMOOTHING_METHOD)
+    
+    return np.array(smoothed)
 
-    S = np.zeros(ts.shape[0])
-    for i in range(ts.shape[0]):
-        if i < window_size:
-            S[i] = np.mean(ts[:i+1])
-        else:
-            S[i] = np.mean(ts[i-window_size:i+1])
-    return S.tolist() if tolist else S
-
-def fit(ts_filename: str, 
-        field: str, 
-        smooth: bool, 
-        smooth_ws: int, 
-        tolist: bool, 
-        verbo: bool=False) -> np.ndarray:
+def read_csv_and_smooth(ts_filename: str, field: str) -> np.ndarray:
     """
-    Fit the workflow including read csv file, extract data from field and moveing average smoothing
+    Read the .csv file, extract field data from the provided dataframe and moveing average smoothing
     
     Args:
         ts_filename: the string of the csv filename
         field: the string of the field in the pd.dataframe for extraction
-        smooth: the boolean to determine whether smooth the time series
-        smooth_ws: the window size for averaging to smooth the time series 
-        tolist: whether return the array in list or warp it in np.ndarray
         verbo: the boolean to determine whether show the logging information
     
     Return:
@@ -118,28 +122,17 @@ def fit(ts_filename: str,
     """
     # loguru.logger.debug(f"Reading files...")
     df = read_time_series_csv(ts_filename, verbo=False)
-    temp_arr = extract_data_from_df(df, field)
-    if smooth:
-        temp_arr = moving_average_smoothing(temp_arr, window_size=smooth_ws, tolist=tolist)
-    if verbo:
-        loguru.logger.info(f"time series extracted SUCCESSFULLY.")
+    # temp_arr = extract_data_from_df(df, field)
+    temp_arr = smoothing(df, field)
     return temp_arr
 
-def fit_transform(ts_filename: List[str],
-                  field: str,
-                  smooth: bool,
-                  smooth_ws: int,
-                  tolist: bool,
-                  verbo: bool) -> np.ndarray:
+def fit_transform(ts_filename: List[str], field: str, verbo: bool) -> np.ndarray:
     """
     Fit the workflow of the extracting data from a csv file and transform it by ROCKET
 
     Args:
         ts_filename: the string of the csv filename
         field: the string of the field in the pd.dataframe for extraction
-        smooth: the boolean to determine whether smooth the time series
-        smooth_ws: the window size for averaging to smooth the time series 
-        tolist: whether return the array in list or warp it in np.ndarray
         verbo: the boolean to determine whether show the logging information
     
     Return:
@@ -151,12 +144,8 @@ def fit_transform(ts_filename: List[str],
         loguru.logger.warning(f'The single filename string is warpped by [] for valid input.')
         ts_filename = [ts_filename]
 
-    ts = np.array([fit(ts_filename=tf,
-                         field=field,
-                         smooth=smooth,
-                         smooth_ws=smooth_ws,
-                         tolist=tolist,
-                         verbo=verbo) for tf in ts_filename])
+    ts = np.array([read_csv_and_smooth(ts_filename=tf, field=field) for tf in ts_filename])
+    
     if verbo:
         loguru.logger.debug(f'Rocket transforming...')
     rocket = ROCKET(n_kernels=10000, kernel_sizes=([9]), random_state=42)
