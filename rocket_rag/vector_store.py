@@ -48,7 +48,12 @@ class BaseVectorStore():
         """Get nodes for response"""
         pass    
 
+
 class TextVectorStore(BaseVectorStore):
+    pass
+
+
+class ImageVectorStore(BaseVectorStore):
     pass
 
 
