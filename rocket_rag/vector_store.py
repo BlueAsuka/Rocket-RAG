@@ -10,13 +10,12 @@ import random
 import loguru
 import numpy as np
 
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict, Tuple, Union
 from tqdm.auto import tqdm
 
 sys.path.append("..")
-from rocket_rag.utils import *
 from rocket_rag.node import Node
-from rocket_rag.node_indexing import NodeIndexer
+from rocket_rag.node_indexing import TimeSeriesNodeIndexer
 
 from pyts.transformation import ROCKET
 from sklearn.linear_model import RidgeClassifier
