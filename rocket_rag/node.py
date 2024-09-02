@@ -25,7 +25,6 @@ from typing import List, Dict, Any, Optional
 from typing_extensions import Self
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union
-from .utils import truncate_text
 
 
 DEFAULT_TEXT_NODE_TMPL = "{metadata_str}\n\n{content}"
@@ -50,7 +49,23 @@ class ObjectType(str, Enum):
     # The following two types are not used in this project
     # INDEX = auto()
     # DOCUMENT = auto()
+
+
+def truncate_text(text: str, max_length: int) -> str:
+    """
+    Truncate text to a maximum length.
     
+    Args:
+        text: the string of the text to be truncated
+        max_length: the integer of the maximum length
+    
+    Return:
+        The truncated text
+    """
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - 3] + "..."
+
 
 class BaseComponent(BaseModel):
     """Base component object to capture class names."""
