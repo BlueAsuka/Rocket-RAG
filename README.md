@@ -63,7 +63,7 @@ The reuslt will be stored at the `logs` directory after the agent is run.
 #### Engineering
 - [x] Suuport PDF parser for textual information retrieval and generation
 - [x] Support multivariant time series processing (time and frequency domain)
-- [ ] Support the interactive mode for the agent to interact with the user by chatting like chatGPT
+- [ ] Support the interactive mode for the agent to interact with the user by chatting or voice
 - [ ] Support the long-term memory for the agent to remember the previous conversation history
 - [ ] Support opensource llm models e.g., llama3, chatGLM and so on
 
