@@ -6,6 +6,9 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 from typing import Tuple
 
+# from rocket import Rocket
+from tsai.imports import default_device
+from tsai.models import MINIROCKET_Pytorch
 
 DEFAULT_SMOOTHING_METHOD = 'savgol_filter'
 
@@ -74,5 +77,46 @@ def fft(ts: np.ndarray, field: str) -> Tuple[np.ndarray, np.ndarray]:
     return fft_values[positive_freq_idx], fft_freqs[positive_freq_idx]
 
 
-def rocket_transform():
+def rocket_transform(ts: np.ndarray) -> np.ndarray:
+    """
+    Get the time series transformation using the ROCKET method
+    
+    Args:
+        ts: a numpy array of the time series in the shape of (seq_len,)
+    
+    Return:
+        The numpy array of the time series after transformation
+    """
+    
+    if not isinstance(ts, np.ndarray):
+        loguru.logger.error(f"{ts} is not a numpy array.")
+        ts = np.array(ts)
+        
+    if len(ts.shape) != 1:
+        loguru.logger.error(f"{ts} is not a 1D array.")
+        return np.array([])
+    
+    # Add the batch and in_channels dimensions to the time series array
+    # The shape of the input is (batch_size, in_channels, seq_len)
+    # Also convert the data type to float32
+    ts_array = np.expand_dims(np.array(ts, dtype=np.float32), axis=(0, 1))
+    assert len(ts_array.shape) == 3
+    assert ts_array.dtype == np.float32
+    
+    mrf = MINIROCKET_Pytorch.MiniRocketFeatures(c_in=ts_array.shape[1], seq_len=ts_array.shape[-1])
+    mrf.fit(ts_array)
+    rocket_feature = MINIROCKET_Pytorch.get_minirocket_features(ts_array, mrf)
+    return rocket_feature.squeeze()
+
+
+def rocket_batch_transform(ts: np.ndarray) -> np.ndarray:
+    """
+    Get the time series transformation using the ROCKET method
+
+    Args:
+
+    Return: 
+    """
+    
+    # TODO: Use torch to do the batch transformation
     pass

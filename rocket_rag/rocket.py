@@ -519,7 +519,7 @@ class DilationBlock(nn.Module):
         return feature_names
 
 
-class XRocket(nn.Module):
+class Rocket(nn.Module):
     """Explainable ROCKET module for timeseries embeddings.
 
     Serves to encode a (multivariate) timeseries into a fixed-length feature vector.
