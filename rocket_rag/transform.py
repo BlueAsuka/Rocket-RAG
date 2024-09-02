@@ -4,6 +4,8 @@ import numpy as np
 
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
+from typing import Tuple
+
 
 DEFAULT_SMOOTHING_METHOD = 'savgol_filter'
 
@@ -49,7 +51,7 @@ def smoothing(ts_df: pd.DataFrame, field: str, method: str=DEFAULT_SMOOTHING_MET
     return np.array(smoothed)
 
 
-def fft(ts_df: pd.DataFrame, field: str) -> np.ndarray:
+def fft(ts: np.ndarray, field: str) -> Tuple[np.ndarray, np.ndarray]:
     """
     Perform Fast Fourier Transform on the time series
 
@@ -61,7 +63,16 @@ def fft(ts_df: pd.DataFrame, field: str) -> np.ndarray:
         The numpy array of the FFT result
     """
     
-    pass
+    if not isinstance(ts, np.ndarray):
+        loguru.logger.error(f"{field} is not a numpy array.")
+        ts = np.array(ts)
+    
+    fft_values = np.fft.fft(ts)
+    fft_freqs = np.fft.fftfreq(len(ts))
+    
+    positive_freq_idx = np.where(fft_freqs >= 0)
+    return fft_values[positive_freq_idx], fft_freqs[positive_freq_idx]
+
 
 def rocket_transform():
     pass
