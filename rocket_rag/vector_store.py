@@ -189,42 +189,43 @@ class TimeSeriesVectorStore(BaseVectorStore):
         
 
 if __name__ == "__main__":
-    loguru.logger.debug(f'Testing on vector store module...')
-    load = '20kg'
-    node_indexer = NodeIndexer()
-    nodes = node_indexer.load_node_indexing(f'../store/nodes_{load}.pkl')
+    # loguru.logger.debug(f'Testing on vector store module...')
+    # load = '20kg'
+    # node_indexer = NodeIndexer()
+    # nodes = node_indexer.load_node_indexing(f'../store/nodes_{load}.pkl')
 
-    loguru.logger.debug(f'Initializing vector store...')
-    vector_store = TimeSeriesVectorStore()
-    vector_store.add(nodes)
-    loguru.logger.info(f'Loaded nodes into the vector store.')
+    # loguru.logger.debug(f'Initializing vector store...')
+    # vector_store = TimeSeriesVectorStore()
+    # vector_store.add(nodes)
+    # loguru.logger.info(f'Loaded nodes into the vector store.')
 
-    if_files_dict = parse_files(main_directory=INFERENCE_DIR)
-    if_ts_files = if_files_dict[load]
-    # np.random.seed(42)
-    rand_idx = np.random.randint(0, len(if_ts_files))
-    if_ts_filename = if_ts_files[rand_idx]
+    # if_files_dict = parse_files(main_directory=INFERENCE_DIR)
+    # if_ts_files = if_files_dict[load]
+    # # np.random.seed(42)
+    # rand_idx = np.random.randint(0, len(if_ts_files))
+    # if_ts_filename = if_ts_files[rand_idx]
 
-    # Warp the filename string as a list and do the ROCKET transformation
-    if_rocket_feature = fit_transform(if_ts_filename,
-                                      field='current',
-                                      smooth=True,
-                                      smooth_ws=15,
-                                      tolist=False,
-                                      verbo=True)
+    # # Warp the filename string as a list and do the ROCKET transformation
+    # if_rocket_feature = fit_transform(if_ts_filename,
+    #                                   field='current',
+    #                                   smooth=True,
+    #                                   smooth_ws=15,
+    #                                   tolist=False,
+    #                                   verbo=True)
 
-    loguru.logger.debug(f'Retrieveling...')
+    # loguru.logger.debug(f'Retrieveling...')
 
-    print(f'Retrievel following results using 1-NN for the given time series {if_ts_filename}:')
-    ids, dists = vector_store.knn_query(if_rocket_feature, k=1, verbo=True)
-    print(f'File: {ids}, distances: {dists}')   
+    # print(f'Retrievel following results using 1-NN for the given time series {if_ts_filename}:')
+    # ids, dists = vector_store.knn_query(if_rocket_feature, k=1, verbo=True)
+    # print(f'File: {ids}, distances: {dists}')   
     
-    print(f'Retrievel following results using 5-NN for the given time series {if_ts_filename}:')
-    ids, dists = vector_store.knn_query(if_rocket_feature, k=5, verbo=True)
-    print(f'File: {ids}, distances: {dists}')   
+    # print(f'Retrievel following results using 5-NN for the given time series {if_ts_filename}:')
+    # ids, dists = vector_store.knn_query(if_rocket_feature, k=5, verbo=True)
+    # print(f'File: {ids}, distances: {dists}')   
     
-    print(f'Retrievel following results using Ridge for the given time series {if_ts_filename}:')
-    result_id, score = vector_store.ridge_query(if_rocket_feature, alpha=1.0, verbo=True)
-    print(f'File: {result_id}, score: {score}')
+    # print(f'Retrievel following results using Ridge for the given time series {if_ts_filename}:')
+    # result_id, score = vector_store.ridge_query(if_rocket_feature, alpha=1.0, verbo=True)
+    # print(f'File: {result_id}, score: {score}')
 
-    loguru.logger.info('Testing on vector store module DONE!')
+    # loguru.logger.info('Testing on vector store module DONE!')
+    pass

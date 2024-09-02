@@ -7,6 +7,7 @@ After constructing nodes containing dense and sparse embeddings, nodes will be s
 import os
 import pickle
 import loguru
+import numpy as np
 
 from tqdm.auto import tqdm
 from typing import List, Dict
@@ -14,7 +15,6 @@ from typing import List, Dict
 import sys
 sys.path.append('../')
 from rocket_rag.node import Node
-from rocket_rag.utils import *
 from pyts.transformation import ROCKET 
 
 
@@ -53,7 +53,7 @@ class TimeSeriesNodeIndexer(BaseIndexer):
         loguru.logger.debug(f'Indexing nodes...')
         nodes = []
         for i in tqdm(range(0, len(ids), batch_size)):
-            i_end = min(i + batch_size, len(ts_files))
+            i_end = min(i + batch_size, len(ts))
             batch = ts[i:i_end]
             ids_batch = ids[i:i_end]
 
@@ -137,48 +137,50 @@ class TimeSeriesNodeIndexer(BaseIndexer):
 
 
 if __name__ == '__main__':
-    loguru.logger.debug(f'Testing on nodes indexing...')
+    # loguru.logger.debug(f'Testing on nodes indexing...')
 
-    load = '-40kg'
-    load_state_dict = {load: [os.listdir(os.path.join(INSTANCES_DIR, load, state)) for state in STATES] for load in LOADS}
-    ids = [item for sublist in load_state_dict[load] for item in sublist]
+    # load = '-40kg'
+    # load_state_dict = {load: [os.listdir(os.path.join(INSTANCES_DIR, load, state)) for state in STATES] for load in LOADS}
+    # ids = [item for sublist in load_state_dict[load] for item in sublist]
 
-    files_dict = parse_files(main_directory=INSTANCES_DIR)
-    ts_files = files_dict[load]
+    # files_dict = parse_files(main_directory=INSTANCES_DIR)
+    # ts_files = files_dict[load]
     
-    ts = np.array([fit(ts_filename=f,
-                       field='current',
-                       smooth=True,
-                       smooth_ws=15,
-                       tolist=False) for f in ts_files])
+    # ts = np.array([fit(ts_filename=f,
+    #                    field='current',
+    #                    smooth=True,
+    #                    smooth_ws=15,
+    #                    tolist=False) for f in ts_files])
     
-    node_indexer = TextNodeIndexer()
-    rocket = ROCKET(n_kernels=10000, kernel_sizes=([9]), random_state=42)
-    nodes = node_indexer.indexing(rocket=rocket,      
-                                  ts=ts,
-                                  batch_size=40,
-                                  ids=ids,
-                                  meta_info={'load': load})
+    # node_indexer = TextNodeIndexer()
+    # rocket = ROCKET(n_kernels=10000, kernel_sizes=([9]), random_state=42)
+    # nodes = node_indexer.indexing(rocket=rocket,      
+    #                               ts=ts,
+    #                               batch_size=40,
+    #                               ids=ids,
+    #                               meta_info={'load': load})
     
-    print(np.array(nodes[5].get_rocket_feature()))
+    # print(np.array(nodes[5].get_rocket_feature()))
 
-    node_indexer.save_node_indexing(nodes, f'../store/nodes_{load}.pkl')
+    # node_indexer.save_node_indexing(nodes, f'../store/nodes_{load}.pkl')
 
-    node_indexer.load_node_indexing(f'../store/nodes_{load}.pkl')
+    # node_indexer.load_node_indexing(f'../store/nodes_{load}.pkl')
 
-    print()
-    if_files_dict = parse_files(main_directory=INFERENCE_DIR)
-    if_ts_files = if_files_dict[load]
-    np.random.seed(42)
-    rand_idx = np.random.randint(0, len(if_ts_files))
-    if_ts_filename = if_ts_files[rand_idx]
-    if_rocket_feature = fit_transform([if_ts_filename],
-                                      field='current',
-                                      smooth=True,
-                                      smooth_ws=15,
-                                      tolist=False,
-                                      verbo=False)
-    print(f'ROCKET transformation on randomly selected inference sample:')
-    print(np.array(if_rocket_feature))
+    # print()
+    # if_files_dict = parse_files(main_directory=INFERENCE_DIR)
+    # if_ts_files = if_files_dict[load]
+    # np.random.seed(42)
+    # rand_idx = np.random.randint(0, len(if_ts_files))
+    # if_ts_filename = if_ts_files[rand_idx]
+    # if_rocket_feature = fit_transform([if_ts_filename],
+    #                                   field='current',
+    #                                   smooth=True,
+    #                                   smooth_ws=15,
+    #                                   tolist=False,
+    #                                   verbo=False)
+    # print(f'ROCKET transformation on randomly selected inference sample:')
+    # print(np.array(if_rocket_feature))
 
-    loguru.logger.info(f'Test Successfully.')
+    # loguru.logger.info(f'Test Successfully.')
+
+    pass
