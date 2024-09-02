@@ -60,10 +60,13 @@ python agent.py
 The reuslt will be stored at the `logs` directory after the agent is run.
 
 ## TODO List
-- [ ] Add PDF parser for textual information retrieval and generation
-- [ ] Add more retrieval methods and techniques with consideration on both time and frequency domains, e.g., keyword sparse search, reranking
-- [ ] Reimplement the ROCKET and its variance from scratch to be independent from the Pyts package
-- [ ] Reimplement the RAG based on DSPy for lighter prompting engineering and management
-- [ ] Support opensource llm models e.g., llama3, chatGLM and so on
+#### Engineering
+- [x] Suuport PDF parser for textual information retrieval and generation
+- [x] Support multivariant time series processing (time and frequency domain)
 - [ ] Support the interactive mode for the agent to interact with the user by chatting like chatGPT
 - [ ] Support the long-term memory for the agent to remember the previous conversation history
+- [ ] Support opensource llm models e.g., llama3, chatGLM and so on
+
+#### Exploration
+- [ ] Reimplement the RAG based on DSPy for lighter prompting engineering and management
+- [ ] Comparing feature fusion using vector concatenation and reranking method
