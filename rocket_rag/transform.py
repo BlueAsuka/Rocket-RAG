@@ -1,3 +1,5 @@
+import os
+import json
 import loguru
 import pandas as pd
 import numpy as np
@@ -5,21 +7,20 @@ import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 from typing import Tuple
+from pathlib import Path
 
 # from rocket import Rocket
 from tsai.imports import default_device
 from tsai.models import MINIROCKET_Pytorch
 
-DEFAULT_SMOOTHING_METHOD = 'savgol_filter'
-
-MA_WINDOW_SIZE = 15
-EWA_SPAN = 10
-GAUSSIAN_SIGMA = 2
-SAVGOL_WINDOW_SIZE = 15
-SAVGOL_POLYORDER = 2
+cfg_path = os.path.join(
+            os.path.abspath(Path(os.path.dirname(__file__)).parent.absolute()),
+            "config/configs.json"
+            )
+cfg = json.load(open(cfg_path))
 
 
-def smoothing(ts_df: pd.DataFrame, field: str, method: str=DEFAULT_SMOOTHING_METHOD) -> np.ndarray:
+def smoothing(ts_df: pd.DataFrame, field: str, method: str=cfg['DEFAULT_SMOOTHING_METHOD']) -> np.ndarray:
     """
     Smooth the time series 
 
@@ -40,16 +41,16 @@ def smoothing(ts_df: pd.DataFrame, field: str, method: str=DEFAULT_SMOOTHING_MET
         loguru.logger.error(f"{field} is not included in the dataframe.")
     
     if method == 'ewma':
-        smoothed = ts_df[field].ewm(span=EWA_SPAN).mean().values
+        smoothed = ts_df[field].ewm(span=cfg['EWA_SPAN']).mean().values
     elif method == 'ma':
-        smoothed = ts_df[field].rolling(window=MA_WINDOW_SIZE).mean().values
+        smoothed = ts_df[field].rolling(window=cfg['MA_WINDOW_SIZE']).mean().values
     elif method == 'gaussian':
-        smoothed = gaussian_filter1d(ts_df[field].values, sigma=GAUSSIAN_SIGMA)
+        smoothed = gaussian_filter1d(ts_df[field].values, sigma=cfg['GAUSSIAN_SIGMA'])
     elif method == 'savgol_filter':
-        smoothed = savgol_filter(ts_df[field].values, window_length=SAVGOL_WINDOW_SIZE, polyorder=SAVGOL_POLYORDER)
+        smoothed = savgol_filter(ts_df[field].values, window_length=cfg['SAVGOL_WINDOW_SIZE'], polyorder=cfg['SAVGOL_POLYORDER'])
     else:
-        loguru.logger.warning(f"Smoothing method {method} is not supported, use {DEFAULT_SMOOTHING_METHOD} instead.")
-        smoothed = smoothing(ts_df, field, warning=True, method=DEFAULT_SMOOTHING_METHOD)
+        loguru.logger.warning(f"Smoothing method {method} is not supported, use {cfg['DEFAULT_SMOOTHING_METHOD']} instead.")
+        smoothed = smoothing(ts_df, field, warning=True, method=cfg['DEFAULT_SMOOTHING_METHOD'])
     
     return np.array(smoothed)
 
@@ -119,4 +120,8 @@ def rocket_batch_transform(ts: np.ndarray) -> np.ndarray:
     """
     
     # TODO: Use torch to do the batch transformation
+    pass
+
+
+if __name__ == "__main__":
     pass

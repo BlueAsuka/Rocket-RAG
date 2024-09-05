@@ -33,7 +33,7 @@ from typing import List, Tuple
 from tqdm.auto import tqdm
 
 sys.path.append('..')
-from rocket_rag.utils import *
+from transform import smoothing
 
 RAW_DATA_DIR = '../data/raw/'
 INSTANCES_DIR = '../data/instances/'
@@ -48,7 +48,7 @@ STATES = ['normal',
 RE_STATES = ['no_obvious_fault', 'light_spalling', 'medium_spalling', 
              'heavy_spalling', 'backlash', 'lack_lubrication']
 LOADS= ['20kg', '40kg', '-40kg']
-INFERENCE_RATE = 0.2 # the percentage of inference instances
+INFERENCE_RATE = 0.3 # the percentage of inference instances
 REPEAT = 5 # repeat 5 times in each test
 VERBO = True
 
@@ -186,19 +186,14 @@ def construct_dataset(filenames: List[str]) -> Tuple[np.ndarray, np.ndarray]:
     for f in tqdm(filenames):
         if os.path.exists(f):
             # Extract the time series data points
-            TS.append(fit(ts_filename=f,
-                          field='current',
-                          smooth=True,
-                          smooth_ws=15,
-                          tolist=False,
-                          verbo=False))
+            TS.append(smoothing(ts_df=pd.read_csv(f), field='current'))
             
             # Obtain the label for the corresponding time series
             raw_label = re.search(r'(.*).csv', os.path.basename(f)).group(1)
             label = re.match(r'^(.*?)_', raw_label).group(1)
             labels.append(STATES.index(label))
     
-    return np.array(TS), np.array(labels)
+    return TS, np.array(labels)
 
 def get_refined_state(state):
     """ Get the refinement label from the original label """

@@ -136,6 +136,10 @@ class TimeSeriesNodeIndexer(BaseIndexer):
         loguru.logger.info(f'Concatenated nodes are saved to {save_path}')
 
 
+class ImageNodeIndexer(BaseIndexer):
+    pass
+
+
 if __name__ == '__main__':
     # loguru.logger.debug(f'Testing on nodes indexing...')
 
