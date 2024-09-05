@@ -9,7 +9,6 @@ from openai import OpenAI, AsyncClient, OpenAIError
 from typing import List, Dict
 from tqdm.auto import tqdm
 
-from .utils import fit_transform
 from .node_indexing import NodeIndexer
 from .vector_store import VectorStore
 from .tools import Tools
