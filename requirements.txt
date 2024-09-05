@@ -8,3 +8,5 @@ pandas
 numpy
 loguru
 google-api-python-client
+streamlit
+matplotlib
