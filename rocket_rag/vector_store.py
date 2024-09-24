@@ -6,7 +6,6 @@ https://docs.llamaindex.ai/en/latest/examples/low_level/vector_store.html
 
 import os
 import sys
-import random
 import loguru
 import numpy as np
 
@@ -15,9 +14,8 @@ from tqdm.auto import tqdm
 
 sys.path.append("..")
 from rocket_rag.node import Node
-from rocket_rag.node_indexing import TimeSeriesNodeIndexer
+from rocket_rag.node_indexing import TextNode
 
-from pyts.transformation import ROCKET
 from sklearn.linear_model import RidgeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -29,60 +27,15 @@ class BaseVectorStore():
 
     """
 
-    stores_text: bool = True
-
-    def get(self, text_id: str) -> List[float]:
-        """Get vector for a text ID."""
-        pass
-
-    def add(self, nodes: List[Node]) -> List[str]:
-        """Add nodes to index"""
-        pass
-
-    def delete(self, node_id: str, **delete_kwargs: Any) -> None:
-        """Delete nodes using node_id."""
-        pass
-
-    def query(self, query: str, **kwargs: Any):
-        """Get nodes for response"""
-        pass    
-
-
-class TextVectorStore(BaseVectorStore):
-    pass
-
-
-class ImageVectorStore(BaseVectorStore):
-    pass
-
-
-class TimeSeriesVectorStore(BaseVectorStore):
-    """An updated version of above SimpleVectorStore"""
-
-    stores_text: bool = True
-
     def __init__(self) -> None:
         """Init params"""
         self.node_dict: Dict[str, Node] = {}
         self.nodes = self.node_dict.values()
-        super().__init__()
-
+        
     def get(self, text_id: str) -> List[float]:
         """Get vector for a text ID."""
         return self.node_dict[text_id]
-    
-    def get_rocket_features(self):
-        """Extract rocket features from the nodes"""
-        if len(self.nodes) == 0:
-            loguru.logger.error(f'No docs in the vector store! Please add doc.')
-        return np.array([node.get_rocket_feature() for node in self.nodes])
-    
-    def get_doc_ids(self):
-        """Extract doc ids from the nodes"""
-        if len(self.nodes) == 0:
-            loguru.logger.error(f'No docs in the vector store! Please add doc.')
-        return np.array([node.id_ for node in self.nodes])
-    
+        
     def add(self, nodes: List[Node]) -> List[str]:
         """Add nodes to index"""
         for node in nodes:
@@ -90,7 +43,93 @@ class TimeSeriesVectorStore(BaseVectorStore):
     
     def delete(self, node_id: str, **delete_kwargs: Any) -> None:
         """Delete nodes using node_id"""
-        del self.node_dict[node_id]
+        del self.node_dict[node_id] 
+
+
+class TextVectorStore(BaseVectorStore):
+    """Text vector stores"""
+    
+    def get_top_k_embeddings(self,
+                             query_embedding: List[float],
+                             doc_embeddings: List[List[float]],
+                             doc_ids: List[str],
+                             similarity_top_k: int = 5) -> Tuple[List[float], List]:
+        """Get top nodes by similarity to the query.
+        
+        Args:
+            query_embedding (List[float]): The embedding of the query.
+            doc_embeddings (List[List[float]]): The embeddings of the documents.
+            doc_ids (List[str]): The ids of the documents.
+            similarity_top_k (int, optional): The number of top documents to return. Defaults to 5.
+            
+        Returns:
+            Tuple[List[float], List]: The top k similarities and ids.
+        """
+        
+        # dimensions: D
+        qembed_np = np.array(query_embedding)
+        # dimensions: N x D
+        dembed_np = np.array(doc_embeddings)
+        # dimensions: N
+        dproduct_arr = np.dot(dembed_np, qembed_np)
+        # dimensions: N
+        norm_arr = np.linalg.norm(qembed_np) * np.linalg.norm(
+            dembed_np, axis=1, keepdims=False
+        )
+        # dimensions: N
+        cos_sim_arr = dproduct_arr / norm_arr
+
+        # now we have the N cosine similarities for each document
+        # sort by top k cosine similarity, and return ids
+        tups = [(cos_sim_arr[i], doc_ids[i]) for i in range(len(doc_ids))]
+        sorted_tups = sorted(tups, key=lambda t: t[0], reverse=True)
+
+        sorted_tups = sorted_tups[:similarity_top_k]
+
+        result_similarities = [s for s, _ in sorted_tups]
+        result_ids = [n for _, n in sorted_tups]
+        return result_similarities, result_ids
+    
+    def dense_search(self, query_embedding: List[float], nodes: List[TextNode]) -> Tuple[List[float], List]:
+        """
+        Dense search.
+        
+        Args:
+            query_embedding (List[float]): The embedding of the query.
+            nodes (List[TextNode]): The nodes to search.
+            similarity_top_k (int, optional): The number of top documents to return. Defaults to 5.
+        
+        Returns:
+            Tuple[List[float], List]: The top k similarities and ids.
+        """
+        
+        # query_embedding = cast(List[float], query.query_embedding)
+        doc_embeddings = [n.embedding for n in nodes]
+        doc_ids = [n.node_id for n in nodes]
+        return self.get_top_k_embeddings(
+            query_embedding,
+            doc_embeddings,
+            doc_ids,
+            similarity_top_k=5,
+        )
+    
+    #TODO: add sparse search
+    def sparse_search(self) -> Tuple[List[float], List]:
+        """Sparse search."""
+        pass
+    
+    #TODO support hybrid search
+    def hybrid_search(self) -> Tuple[List[float], List]:
+        """Hybrid search."""
+        pass
+
+
+class ImageVectorStore(BaseVectorStore):
+    pass
+
+
+class TimeSeriesVectorStore(BaseVectorStore):
+    """Time series vector stores"""
 
     def knn_query(self, 
                   query: Union[List[Any], np.ndarray],
