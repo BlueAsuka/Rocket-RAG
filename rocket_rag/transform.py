@@ -10,23 +10,17 @@ from scipy.signal import savgol_filter
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import Tuple, List
 from pathlib import Path
-from tsai.imports import default_device
 from tsai.models import MINIROCKET_Pytorch
 from openai import OpenAI
-
-cfg_path = os.path.join(
-            os.path.abspath(Path(os.path.dirname(__file__)).parent.absolute()),
-            "config/configs.json"
-            )
-cfg = json.load(open(cfg_path))
 
 
 class TimeSeriesTransform:
     """Time series transform class"""
     def __init__(self, cfg) -> None:
         self.cfg = cfg
+        self.default_smoothing_method = cfg['DEFAULT_SMOOTHING_METHOD']
     
-    def smoothing(self, ts_df: pd.DataFrame, field: str, method: str=cfg['DEFAULT_SMOOTHING_METHOD']) -> np.ndarray:
+    def smoothing(self, ts_df: pd.DataFrame, field: str, method: str=None) -> np.ndarray:
         """
         Smooth the time series 
 
@@ -45,6 +39,8 @@ class TimeSeriesTransform:
         
         if field not in ts_df.columns:
             loguru.logger.error(f"{field} is not included in the dataframe.")
+        
+        method = self.default_smoothing_method if method is None else method
         
         if method == 'ewma':
             smoothed = ts_df[field].ewm(span=self.cfg['EWA_SPAN']).mean().values
@@ -141,7 +137,7 @@ class TimeSeriesTransform:
         pass
 
 
-class SemanticChunker:
+class TextTransform:
     """Build the semantic chunker for text splitting """
     def __init__(self, cfg) -> None:
         self.cfg = cfg
@@ -158,7 +154,7 @@ class SemanticChunker:
         
         split_sents = self._split_sentences(text)
         combin_sents = self._combine_sentences(split_sents)
-        sents_embeds = self._get_embedding_from_openai(combin_sents)
+        sents_embeds = self.get_embedding_from_openai(combin_sents)
         sents_dists = self._calculate_cosine_similarity(sents_embeds)
         
         breakpoint_percentile_threshold = 80
@@ -179,15 +175,15 @@ class SemanticChunker:
         
         return chunks
     
-    def _get_embedding_from_openai(self, texts: str) -> List[float]:
+    def get_embedding_from_openai(self, texts: str) -> List[float]:
         """Get the embedding from OpenAI API"""
         
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", self.cfg["OPENAI_API_KEY"]))
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         
         try:
             response = client.embeddings.create(
                 input=texts,
-                model=cfg['embedding_model']
+                model=self.cfg['EMB_MODEL']
             )
             embeddings = np.array([item.embedding for item in response.data])
             return embeddings
@@ -246,5 +242,21 @@ class SemanticChunker:
         return distances
 
 
-if __name__ == "__main__":
+class ImageTransform:
     pass
+
+
+if __name__ == "__main__":
+    cfg_path = os.path.join(
+            os.path.abspath(Path(os.path.dirname(__file__)).parent.absolute()),
+            "config/configs.json"
+            )
+    cfg = json.load(open(cfg_path))
+    
+    loguru.logger.debug(f"Testing the time series transformation")
+    ts_trans = TimeSeriesTransform(cfg=cfg)
+    loguru.logger.debug(f"Testing the text transformation")
+    txt_trans = TextTransform(cfg=cfg)
+    # loguru.logger.debug(f"Testing the image transformation")
+    # img_trans = ImageTransform(cfg=cfg)
+    loguru.logger.debug(f"DONE")

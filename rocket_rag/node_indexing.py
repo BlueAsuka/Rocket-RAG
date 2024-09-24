@@ -6,21 +6,18 @@ After constructing nodes containing dense and sparse embeddings, nodes will be s
 
 import re
 import os
+import sys
 import pickle
 import loguru
 import numpy as np
 
 from tqdm.auto import tqdm
 from typing import List, Dict
-
-import sys
-sys.path.append('../')
-from pyts.transformation import ROCKET 
-from pydantic import BaseModel, Field
-from typing import List
 from abc import abstractmethod
-from transform import *
+
+sys.path.append('../')
 from rocket_rag.node import *
+from rocket_rag.transform import *
 
 
 class BaseNodeIndexer():
@@ -108,8 +105,45 @@ class BaseNodeIndexer():
 
 
 class TextNodeIndexer(BaseNodeIndexer):
-    pass
+    def __init__(self, nodes_filename=None) -> None:
+        super().__init__()
+        self.nodes_filename = nodes_filename
+    
+    def indexing(self,
+                 txt: List[str], 
+                 embeds: List[List[float]],
+                 meta_info: Dict[str, str]=None) -> List[Node]:
+        """
+        Node indexing after Bag-of-Words (BoWs) transformation
+        A list of dense text embeddings
+        The result will be represented in nodes and stored for later retrievel
 
+        Args:
+            txt: the list of text data points
+            ids: A list of string for marking and naming nodes, this can be a a list of filename
+            meta_info: A dictionary {str, str} to demonstrate some info of the node such as the load information
+
+        Return:
+            A list of nodes including strings and dense embeddings
+        """
+
+        loguru.logger.debug(f'Indexing txt nodes...')
+        assert len(txt) == len(embeds), 'The number of text data and embeddings should be the same.'
+
+        nodes = []
+        for idx, text_chunk in enumerate(txt):
+            nodes.append(TextNode(text=text_chunk, 
+                                  embedding=embeds[idx], 
+                                #   extra_info=meta_info,
+                                  ))
+        loguru.logger.debug(f'Indexing txt nodes DONE!')
+        
+        self.nodes = nodes
+        
+        # Save the nodes
+        self.save_nodes(self.nodes, self.nodes_filename)
+        
+        return nodes
 
 class ImageNodeIndexer(BaseNodeIndexer):
     pass
@@ -117,8 +151,9 @@ class ImageNodeIndexer(BaseNodeIndexer):
 
 class TimeSeriesNodeIndexer(BaseNodeIndexer):
     
-    def __init__(self, nodes_filename=None) -> None:
+    def __init__(self, ts_transform: TimeSeriesTransform, nodes_filename=None) -> None:
         super().__init__()
+        self.ts_tansform = ts_transform
         self.nodes_filename = nodes_filename
     
     def indexing(self, 
@@ -139,26 +174,32 @@ class TimeSeriesNodeIndexer(BaseNodeIndexer):
             A list of nodes including BoWs string, dense and sparse embeddings
         """
         
-        loguru.logger.debug(f'Indexing nodes...')
+        loguru.logger.debug(f'Indexing time series nodes...')
         assert len(ts) == len(ids), 'The number of time series data and ids should be the same.'
         
         nodes = []
         for i in tqdm(range(len(ts))):
-            nodes.append(Node(id_=ids[i],
-                              rocket=get_rocket(ts[i]),
-                              fft=get_fft(ts[i]),
-                              ApEn=get_ApEn(ts[i]),
+            nodes.append(TimeSeriesNode(id_=ids[i],
+                              rocket=self.ts_tansform.get_rocket(ts[i]),
+                              fft=self.ts_tansform.get_fft(ts[i]),
+                              ApEn=self.ts_tansform.get_ApEn(ts[i]),
                               extra_info=meta_info))
-        loguru.logger.debug(f'Nodes indexing DONE.')
+        loguru.logger.debug(f'Indexing time series nodes DONE.')
         
         self.nodes = nodes
         
         # Save the nodes
         self.save_nodes(self.nodes, self.nodes_filename)
+        
+        return self.nodes
 
 
 if __name__ == '__main__':
-    loguru.logger.debug(f'Testing on nodes indexing...')
+    cfg_path = os.path.join(
+        os.path.abspath(Path(os.path.dirname(__file__)).parent.absolute()),
+        "config/configs.json"
+        )
+    cfg = json.load(open(cfg_path))
     
     INSTANCES_DIR = '../data/instances/'
     INFERENCE_DIR = '../data/inference/'
@@ -168,18 +209,23 @@ if __name__ == '__main__':
               'spalling1', 'spalling2', 'spalling3', 'spalling4', 'spalling5', 'spalling6', 'spalling7', 'spalling8']
     LOADS= ['20kg', '40kg', '-40kg']
     
+    loguru.logger.debug(f'Testing on time series nodes indexing...')
+    
     load_num = 20
     load = '20kg'
     ids = [os.listdir(os.path.join(INSTANCES_DIR, load, state)) for state in STATES]
     ids = [filename for sublist in ids for filename in sublist]
     
+    ts_transform = TimeSeriesTransform(cfg=cfg)
+    
     ts = []
     for f in ids:
         state = re.match(fr'(.*)_{load_num}', f).group(1)
         temp_ts_df = pd.read_csv(os.path.join(INSTANCES_DIR, load, state, f))
-        ts.append(smoothing(ts_df=temp_ts_df, field='current'))
+        ts.append(ts_transform.smoothing(ts_df=temp_ts_df, field='current'))
     
-    ts_node_indexer = TimeSeriesNodeIndexer(nodes_filename=f'../store/ts_indexing/current_nodes_{load}.pkl')
+    ts_node_indexer = TimeSeriesNodeIndexer(ts_transform=ts_transform, 
+                                            nodes_filename=f'../store/ts_indexing/current_nodes_{load}.pkl')
     ts_node_indexer.indexing(ts=ts, ids=ids, meta_info={'load': load})
 
     loguru.logger.debug(f'Test Successfully.')
