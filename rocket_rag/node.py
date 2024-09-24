@@ -390,11 +390,14 @@ class TimeSeriesNode(TextNode):
     """Node object for time series retrieve"""
     
     # label: str = Field(default="", description="Label description of the time series of the node.")
-    rocket_feature: Optional[List[Any]] = Field(
+    rocket: Optional[List[Any]] = Field(
         default=None, description="Rocket feature of the node."
     )
-    sparse_dict: Optional[Dict[str, List[Any]]] = Field(
-        default=None, description="Dictionary of sparse embedding of the node."
+    fft: Optional[List[Any]] = Field(
+        default=None, description="FFT feature of the node."
+    )
+    ApEn: Optional[Dict[str, List[Any]]] = Field(
+        default=None, description="Approximate entropy features of the node."
     )
 
     @classmethod
@@ -410,18 +413,27 @@ class TimeSeriesNode(TextNode):
 
         Error if rocket features is None    
         """
-        if self.rocket_feature is None:
+        if self.rocket is None:
             raise ValueError("rocket feature not set.")
-        return self.rocket_feature
+        return self.rocket
     
-    def get_sparse_dict(self) -> Dict[str, float]:
-        """Get sparse dict.
+    def get_fft_feature(self) -> List[float]:
+        """Get fft features
 
-        Errors if sparse dictionary is None.
+        Error if fft features is None    
         """
-        if self.sparse_dict is None:
-            raise ValueError("sparse_dict not set.")
-        return self.sparse_dict
+        if self.fft is None:
+            raise ValueError("fft feature not set.")
+        return self.fft
+    
+    def get_apen_feature(self) -> Dict[str, float]:
+        """Get Apen of the node.
+
+        Errors if this valus is None.
+        """
+        if self.ApEn is None:
+            raise ValueError("Apen not set.")
+        return self.ApEn
 
 
 if __name__ == "__main__":

@@ -55,20 +55,18 @@ def smoothing(ts_df: pd.DataFrame, field: str, method: str=cfg['DEFAULT_SMOOTHIN
     return np.array(smoothed)
 
 
-def fft(ts: np.ndarray, field: str) -> Tuple[np.ndarray, np.ndarray]:
+def get_fft(ts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Perform Fast Fourier Transform on the time series
 
     Args:
         ts_df: a pandas dataframe containing the time series
-        field: a string of the field in the dataframe for FFT
         
     Return:
         The numpy array of the FFT result
     """
     
     if not isinstance(ts, np.ndarray):
-        loguru.logger.error(f"{field} is not a numpy array.")
         ts = np.array(ts)
     
     fft_values = np.fft.fft(ts)
@@ -78,7 +76,7 @@ def fft(ts: np.ndarray, field: str) -> Tuple[np.ndarray, np.ndarray]:
     return fft_values[positive_freq_idx], fft_freqs[positive_freq_idx]
 
 
-def rocket_transform(ts: np.ndarray) -> np.ndarray:
+def get_rocket(ts: np.ndarray) -> np.ndarray:
     """
     Get the time series transformation using the ROCKET method
     
@@ -108,6 +106,20 @@ def rocket_transform(ts: np.ndarray) -> np.ndarray:
     mrf.fit(ts_array)
     rocket_feature = MINIROCKET_Pytorch.get_minirocket_features(ts_array, mrf)
     return rocket_feature.squeeze()
+
+
+def get_ApEn(ts: np.ndarray) -> float:
+    """
+    Get the approximate entropy of the time series
+
+    Args:
+        ts_df: a pandas dataframe containing the time series
+        field: a string of the field in the dataframe for ApEn
+
+    Return:
+        The approximate entropy of the time series
+    """
+    pass
 
 
 def rocket_batch_transform(ts: np.ndarray) -> np.ndarray:
