@@ -104,7 +104,7 @@ class TimeSeriesTransform:
         assert len(ts_array.shape) == 3
         assert ts_array.dtype == np.float32
         
-        mrf = MINIROCKET_Pytorch.MiniRocketFeatures(c_in=ts_array.shape[1], seq_len=ts_array.shape[-1])
+        mrf = MINIROCKET_Pytorch.MiniRocketFeatures(c_in=ts_array.shape[1], seq_len=ts_array.shape[-1], random_state=self.cfg['RANDOM_STATE'])
         mrf.fit(ts_array)
         rocket_feature = MINIROCKET_Pytorch.get_minirocket_features(ts_array, mrf)
         return rocket_feature.squeeze()
