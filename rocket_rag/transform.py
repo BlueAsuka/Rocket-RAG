@@ -11,6 +11,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import Tuple, List
 from pathlib import Path
 from tsai.models import MINIROCKET_Pytorch
+from pyts.transformation import ROCKET
 from openai import OpenAI
 
 
@@ -100,13 +101,16 @@ class TimeSeriesTransform:
         # Add the batch and in_channels dimensions to the time series array
         # The shape of the input is (batch_size, in_channels, seq_len)
         # Also convert the data type to float32
-        ts_array = np.expand_dims(np.array(ts, dtype=np.float32), axis=(0, 1))
-        assert len(ts_array.shape) == 3
-        assert ts_array.dtype == np.float32
+        rocket = ROCKET(random_state=self.cfg['RANDOM_STATE'])
+        rocket_feature = rocket.fit_transform(ts.reshape(1, -1))        
         
-        mrf = MINIROCKET_Pytorch.MiniRocketFeatures(c_in=ts_array.shape[1], seq_len=ts_array.shape[-1], random_state=self.cfg['RANDOM_STATE'])
-        mrf.fit(ts_array)
-        rocket_feature = MINIROCKET_Pytorch.get_minirocket_features(ts_array, mrf)
+        # ts_array = np.expand_dims(np.array(ts, dtype=np.float32), axis=(0, 1))
+        # assert len(ts_array.shape) == 3
+        # assert ts_array.dtype == np.float32
+        
+        # mrf = MINIROCKET_Pytorch.MiniRocketFeatures(c_in=ts_array.shape[1], seq_len=ts_array.shape[-1], random_state=self.cfg['RANDOM_STATE'])
+        # mrf.fit(ts_array)
+        # rocket_feature = MINIROCKET_Pytorch.get_minirocket_features(ts_array, mrf)
         return rocket_feature.squeeze()
 
 
