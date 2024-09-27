@@ -1,9 +1,19 @@
 {
-    "google_api_key": "<YOUR GOOGLE API KEY>",
-    "google_cse_id": "<YOUR GOOGLE CUSTOM SEARCH ENGINE>",
-    "openai_api_key": "<YOUR OPENAI API KEY>",
-    "gpt_model": "<GPT MODEL CARD>",
-    "cur_smooth_ws": 15,
-    "pos_smooth_ws": 20,
-    "query_mode": ["knn", "ridge"]
+    "GOOGLE_API_KEY": "",
+    "GOOGLE_CSE_ID": "",
+    "OPENAI_API_KEY": "",
+
+    "GPT_MODEL": "gpt-3.5-turbo",
+    "MAX_TOKENS": 4096,
+    "TEMPAURATURE": 0.7,
+    "EMB_MODEL": "text-embedding-3-small",
+
+    "DEFAULT_SMOOTHING_METHOD": "savgol_filter",
+    "MA_SMOOTH_WINDOW": 15,
+    "EWA_SPAN": 10,
+    "GAUSSIAN_SIGMA": 2,
+    "SAVGOL_WINDOW_SIZE": 15,
+    "SAVGOL_POLYORDER": 2,
+    "RANDOM_STATE": 42,    
+    "QUERY_MODE": ["knn", "ridge"]
 }
