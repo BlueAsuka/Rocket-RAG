@@ -23,6 +23,7 @@ instances
 import os
 import re
 import sys
+import json
 import shutil
 import loguru
 import random
@@ -33,7 +34,7 @@ from typing import List, Tuple
 from tqdm.auto import tqdm
 
 sys.path.append('..')
-from transform import smoothing
+from transform import TimeSeriesTransform
 
 RAW_DATA_DIR = '../data/raw/'
 INSTANCES_DIR = '../data/instances/'
@@ -51,6 +52,11 @@ LOADS= ['20kg', '40kg', '-40kg']
 INFERENCE_RATE = 0.3 # the percentage of inference instances
 REPEAT = 5 # repeat 5 times in each test
 VERBO = True
+
+
+with open('../config.configs.json') as f:
+    cfg = json.load(f)
+time_series_transform = TimeSeriesTransform(cfg)
 
 
 def init_dirs():
@@ -251,10 +257,10 @@ def main():
     construct_instances_set()
     print(Fore.YELLOW + "Constructing inference set..." + Fore.RESET)
     construct_inference_set()
-    print(Fore.YELLOW + "Constructing refined instances set..." + Fore.RESET)
-    construct_refined_set(instances=True)
-    print(Fore.YELLOW + "Constructing refined inference set..." + Fore.RESET)
-    construct_refined_set(instances=False)
+    # print(Fore.YELLOW + "Constructing refined instances set..." + Fore.RESET)
+    # construct_refined_set(instances=True)
+    # print(Fore.YELLOW + "Constructing refined inference set..." + Fore.RESET)
+    # construct_refined_set(instances=False)
     print(Fore.YELLOW + "Done!" + Fore.RESET)
 
 

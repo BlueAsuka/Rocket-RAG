@@ -10,7 +10,7 @@ from scipy.signal import savgol_filter
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import Tuple, List
 from pathlib import Path
-from tsai.models import MINIROCKET_Pytorch
+# from tsai.models import MINIROCKET_Pytorch
 from pyts.transformation import ROCKET
 from openai import OpenAI
 
